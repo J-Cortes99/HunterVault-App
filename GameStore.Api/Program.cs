@@ -1,5 +1,6 @@
 using GameStore.Api.Data;
 using GameStore.Api.Endpoints;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,14 +16,25 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddValidation();
 
+builder.Services.AddControllers();
+
 builder.AddGameStoreDb();
+
+builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
 app.UseCors();
 
+if(app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+    app.MapScalarApiReference();
+}
+
+app.MapControllers();
 app.MapGamesEndpoints();
-app. MapGenresEndpoints();
+app.MapGenresEndpoints();
 
 app.MigrateDb();
 
