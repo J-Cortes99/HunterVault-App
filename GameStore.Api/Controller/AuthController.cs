@@ -1,69 +1,69 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 using GameStore.Api.Entities;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
+using GameStore.Api.Models;
+using GameStore.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
+
 
 namespace GameStore.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class AuthController(IConfiguration configuration) : ControllerBase
+    public class AuthController(IAuthService authService) : ControllerBase
     {
         public static User user = new User();
 
         [HttpPost("register")]
-        public ActionResult<User> Register(UserDto userDto)
+        public async Task<ActionResult<User>> Register(UserDto request)
         {
-            var hashedPassword = new PasswordHasher<User>().HashPassword(user, userDto.Password);
+            var user = await authService.RegisterAsync(request);
 
-            user.Username = userDto.Username;
-            user.PasswordHash = hashedPassword;
+            if (user == null)
+            {
+                return BadRequest("User already exists.");
+            }
 
             return Ok(user);
         }
 
         [HttpPost("login")]
-        public ActionResult<string> Login(UserDto request)
+        public async Task<ActionResult<TokenResponseDto>> Login(UserDto request)
         {
-            if (user.Username != request.Username)
+            var result = await authService.LoginAsync(request);
+
+            if (result == null)
             {
-                return BadRequest("User not found.");
+                return BadRequest("Invalid username or password.");
             }
 
-            if(new PasswordHasher<User>().VerifyHashedPassword(user, user.PasswordHash, request.Password) == PasswordVerificationResult.Failed)
-            {
-                return BadRequest("Incorrect password.");
-            }
-
-            string token = CreateToken(user);
-
-            return Ok(token);
+            return Ok(result);
         }
 
-        private string CreateToken(User user)
+        [HttpPost("refresh")]
+        public async Task<ActionResult<TokenResponseDto>> RefreshToken(RefreshTokenRequestDto request)
         {
-            var claims = new List<Claim>
+            var result = await authService.RefreshTokenAsync(request);
+
+            if (result == null)
             {
-                new Claim(ClaimTypes.Name, user.Username)
-            };
+                return BadRequest("Invalid refresh token.");
+            }
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration.GetValue<string>("AppSettings:Token")!));
+            return Ok(result);
+        }
 
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512);
+        [Authorize]
+        [HttpGet]
+        public IActionResult AuthenticatedOnlyEndpoint()
+        {
+            return Ok("You are authenticated!");
+        }
 
-            var tokenDescriptor = new JwtSecurityToken(
-                issuer: configuration.GetValue<string>("AppSettings:Issuer"),
-                audience: configuration.GetValue<string>("AppSettings:Audience"),
-                claims: claims,
-                expires: DateTime.UtcNow.AddDays(1),
-                signingCredentials: creds
-            );
-
-            return new JwtSecurityTokenHandler().WriteToken(tokenDescriptor);
+        [Authorize(Roles = "Admin")]
+        [HttpGet("admin")]
+        public IActionResult AdminOnlyEndpoint()
+        {
+            return Ok("You are an admin!");
         }
     }
 }
