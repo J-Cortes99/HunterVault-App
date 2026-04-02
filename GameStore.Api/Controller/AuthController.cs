@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace GameStore.Api.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     [ApiController]
     public class AuthController(IAuthService authService) : ControllerBase
     {
