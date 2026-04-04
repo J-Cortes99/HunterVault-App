@@ -32,17 +32,17 @@ export function AuthPage() {
     e.preventDefault();
 
     if (!username.trim() || !password.trim()) {
-      toast.error('Please fill in all fields');
+      toast.error('Por favor, completa todos los campos');
       return;
     }
 
     if (!isLogin && password !== confirmPassword) {
-      toast.error('Passwords do not match');
+      toast.error('Las contraseñas no coinciden');
       return;
     }
 
     if (password.length < 4) {
-      toast.error('Password must be at least 4 characters');
+      toast.error('La contraseña debe tener al menos 4 caracteres');
       return;
     }
 
@@ -50,17 +50,17 @@ export function AuthPage() {
     try {
       if (isLogin) {
         await login(username.trim(), password);
-        toast.success(`Welcome back, ${username.trim()}!`);
+        toast.success(`¡Bienvenido de nuevo, ${username.trim()}!`);
       } else {
         await register(username.trim(), password);
-        toast.success('Account created! You can now log in.');
+        toast.success('¡Cuenta creada! Ya puedes iniciar sesión.');
         setMode('login');
         resetForm();
       }
     } catch (err: unknown) {
       const errorMsg =
         (err as { response?: { data?: string } })?.response?.data ??
-        (isLogin ? 'Invalid username or password' : 'Registration failed. Username may already exist.');
+        (isLogin ? 'Usuario o contraseña inválidos' : 'Error al registrarse. El usuario podría existir ya.');
       toast.error(errorMsg);
     } finally {
       setIsSubmitting(false);
@@ -101,7 +101,7 @@ export function AuthPage() {
               </span>
             </h1>
             <p className="mt-1 text-sm text-slate-400">
-              {isLogin ? 'Sign in to your account' : 'Create a new account'}
+              {isLogin ? 'Inicia sesión en tu cuenta' : 'Crea una nueva cuenta'}
             </p>
           </div>
         </div>
@@ -121,7 +121,7 @@ export function AuthPage() {
               id="tab-login"
             >
               <LogIn size={16} />
-              Sign In
+              Iniciar Sesión
             </button>
             <button
               type="button"
@@ -134,7 +134,7 @@ export function AuthPage() {
               id="tab-register"
             >
               <UserPlus size={16} />
-              Register
+              Registrarse
             </button>
           </div>
 
@@ -143,14 +143,14 @@ export function AuthPage() {
             {/* Username */}
             <div className="space-y-2">
               <label htmlFor="auth-username" className="block text-sm font-medium text-slate-300">
-                Username
+                Nombre de usuario
               </label>
               <input
                 id="auth-username"
                 type="text"
                 value={username}
                 onChange={e => setUsername(e.target.value)}
-                placeholder="Enter your username"
+                placeholder="Introduce tu nombre de usuario"
                 autoComplete="username"
                 disabled={isSubmitting}
                 className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all duration-200 focus:border-amber-500/50 focus:bg-white/[0.07] focus:ring-2 focus:ring-amber-500/20 disabled:opacity-50"
@@ -160,7 +160,7 @@ export function AuthPage() {
             {/* Password */}
             <div className="space-y-2">
               <label htmlFor="auth-password" className="block text-sm font-medium text-slate-300">
-                Password
+                Contraseña
               </label>
               <div className="relative">
                 <input
@@ -168,7 +168,7 @@ export function AuthPage() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder="Enter your password"
+                  placeholder="Introduce tu contraseña"
                   autoComplete={isLogin ? 'current-password' : 'new-password'}
                   disabled={isSubmitting}
                   className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 pr-12 text-sm text-white placeholder-slate-500 outline-none transition-all duration-200 focus:border-amber-500/50 focus:bg-white/[0.07] focus:ring-2 focus:ring-amber-500/20 disabled:opacity-50"
@@ -178,7 +178,7 @@ export function AuthPage() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-200"
                   tabIndex={-1}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -189,14 +189,14 @@ export function AuthPage() {
             {!isLogin && (
               <div className="animate-fade-in space-y-2">
                 <label htmlFor="auth-confirm-password" className="block text-sm font-medium text-slate-300">
-                  Confirm Password
+                  Confirmar Contraseña
                 </label>
                 <input
                   id="auth-confirm-password"
                   type={showPassword ? 'text' : 'password'}
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm your password"
+                  placeholder="Confirma tu contraseña"
                   autoComplete="new-password"
                   disabled={isSubmitting}
                   className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all duration-200 focus:border-amber-500/50 focus:bg-white/[0.07] focus:ring-2 focus:ring-amber-500/20 disabled:opacity-50"
@@ -217,11 +217,11 @@ export function AuthPage() {
               {isSubmitting ? (
                 <>
                   <Loader2 size={18} className="animate-spin" />
-                  {isLogin ? 'Signing in...' : 'Creating account...'}
+                  {isLogin ? 'Iniciando sesión...' : 'Creando cuenta...'}
                 </>
               ) : (
                 <>
-                  {isLogin ? 'Sign In' : 'Create Account'}
+                  {isLogin ? 'Iniciar Sesión' : 'Crear Cuenta'}
                   <ArrowRight size={18} className="transition-transform duration-200 group-hover:translate-x-1" />
                 </>
               )}
@@ -230,21 +230,21 @@ export function AuthPage() {
 
           {/* Footer */}
           <p className="mt-6 text-center text-sm text-slate-500">
-            {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
+            {isLogin ? '¿No tienes una cuenta?' : '¿Ya tienes una cuenta?'}{' '}
             <button
               type="button"
               onClick={toggleMode}
               className="font-semibold text-amber-400 transition-colors hover:text-amber-300"
               id="auth-toggle-mode"
             >
-              {isLogin ? 'Register' : 'Sign In'}
+              {isLogin ? 'Registrarse' : 'Iniciar Sesión'}
             </button>
           </p>
         </div>
 
         {/* Bottom decorative text */}
         <p className="mt-6 text-center text-xs text-slate-600">
-          Hunt trophies. Track achievements. Show off your collection.
+          Caza trofeos. Registra tus logros. Presume de tu colección.
         </p>
       </div>
     </div>

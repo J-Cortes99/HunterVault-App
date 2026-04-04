@@ -1,4 +1,5 @@
 namespace HunterVault.Api.Entities;
+using HunterVault.Api.Models;
 
 public class User
 {
@@ -8,4 +9,5 @@ public class User
     public string Role { get; set; } = string.Empty;
     public string? RefreshToken { get; set; }
     public DateTime? RefreshTokenExpiryTime { get; set; }
+    public ICollection<Game> Games { get; set; } = new List<Game>();
 }

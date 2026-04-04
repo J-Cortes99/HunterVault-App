@@ -27,9 +27,13 @@ public static class ProfileEndpoints
                     Id: g.Id,
                     Name: g.Name,
                     Genre: g.Genre!.Name,
-                    Price: g.Price,
-                    ReleaseDate: g.ReleaseDate,
-                    Platform: g.Platform
+                    CompletionDate: g.CompletionDate,
+                    Platform: g.Platform,
+                    Status: g.Status,
+                    Format: g.Format,
+                    HoursPlayed: g.HoursPlayed,
+                    DifficultyRating: g.DifficultyRating,
+                    Review: g.Review
                 ))
                 .AsNoTracking()
                 .ToListAsync();

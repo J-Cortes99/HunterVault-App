@@ -32,11 +32,11 @@ export function DeleteModal({ gameName, isDeleting, onConfirm, onCancel }: Delet
         </div>
 
         {/* Content */}
-        <h2 className="mb-2 font-display text-lg font-semibold text-white">Remove Game</h2>
+        <h2 className="mb-2 font-display text-lg font-semibold text-white">Eliminar de la colección</h2>
         <p className="mb-6 text-sm text-slate-400">
-          Are you sure you want to delete{' '}
+          ¿Estás seguro de que quieres eliminar{' '}
           <span className="font-semibold text-white">"{gameName}"</span>?
-          This action cannot be undone.
+          Esta acción no se puede deshacer.
         </p>
 
         {/* Actions */}
@@ -46,7 +46,7 @@ export function DeleteModal({ gameName, isDeleting, onConfirm, onCancel }: Delet
             disabled={isDeleting}
             className="flex-1 rounded-xl bg-white/5 px-4 py-2.5 text-sm font-medium text-slate-300 transition-all hover:bg-white/10 disabled:opacity-50"
           >
-            Cancel
+            Cancelar
           </button>
           <button
             onClick={onConfirm}
@@ -58,7 +58,7 @@ export function DeleteModal({ gameName, isDeleting, onConfirm, onCancel }: Delet
             ) : (
               <Trash2 size={15} />
             )}
-            {isDeleting ? 'Deleting…' : 'Delete'}
+            {isDeleting ? 'Eliminando...' : 'Eliminar'}
           </button>
         </div>
       </div>

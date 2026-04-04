@@ -26,7 +26,7 @@ export function GameModal({ title, genres, initialData, isSubmitting, onSubmit, 
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h2 className="font-display text-xl font-semibold text-white">{title}</h2>
-            <p className="text-sm text-slate-500 mt-0.5">Fill in the details below</p>
+            <p className="text-sm text-slate-500 mt-0.5">Rellena los detalles a continuación</p>
           </div>
           <button
             onClick={onClose}

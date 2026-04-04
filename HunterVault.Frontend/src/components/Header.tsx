@@ -13,7 +13,7 @@ export function Header({ onAddGame }: HeaderProps) {
     if (!user) return;
     const url = `${window.location.origin}/profile/${user.username}`;
     navigator.clipboard.writeText(url).then(() => {
-      toast.success('Profile link copied to clipboard!');
+      toast.success('¡Enlace de perfil copiado al portapapeles!');
     }).catch(() => {
       window.open(url, '_blank');
     });
@@ -34,7 +34,7 @@ export function Header({ onAddGame }: HeaderProps) {
                 Vault
               </span>
             </span>
-            <span className="text-xs text-slate-500">Trophy & Achievement Tracker</span>
+            <span className="text-xs text-slate-500">Rastreador de Trofeos y Logros</span>
           </div>
         </div>
 
@@ -60,7 +60,7 @@ export function Header({ onAddGame }: HeaderProps) {
           <button
             onClick={handleShareProfile}
             id="share-profile-button"
-            title="Share your profile"
+            title="Comparte tu perfil"
             className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/5 text-slate-400 transition-all duration-200 hover:border-amber-500/30 hover:bg-amber-500/10 hover:text-amber-400"
           >
             <Share2 size={18} />
@@ -72,14 +72,14 @@ export function Header({ onAddGame }: HeaderProps) {
             className="group flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-amber-500/25 transition-all duration-200 hover:scale-105 hover:shadow-amber-500/40 active:scale-95"
           >
             <Sparkles size={16} className="transition-transform duration-200 group-hover:rotate-12" />
-            Log Hunt
+            Registrar Hunt
           </button>
 
           {/* Logout */}
           <button
             onClick={logout}
             id="logout-button"
-            title="Sign out"
+            title="Cerrar sesión"
             className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/5 text-slate-400 transition-all duration-200 hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-400"
           >
             <LogOut size={18} />

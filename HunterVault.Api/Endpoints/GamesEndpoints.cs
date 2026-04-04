@@ -33,9 +33,13 @@ public static class GamesEndpoints
                     Id: game.Id,
                     Name: game.Name,
                     Genre: game.Genre!.Name,
-                    Price: game.Price,
-                    ReleaseDate: game.ReleaseDate,
-                    Platform: game.Platform
+                    CompletionDate: game.CompletionDate,
+                    Platform: game.Platform,
+                    Status: game.Status,
+                    Format: game.Format,
+                    HoursPlayed: game.HoursPlayed,
+                    DifficultyRating: game.DifficultyRating,
+                    Review: game.Review
                 ))
                 .AsNoTracking()
                 .ToListAsync());
@@ -55,9 +59,13 @@ public static class GamesEndpoints
                     Id: game.Id,
                     Name: game.Name,
                     GenreId: game.GenreId,
-                    Price: game.Price,
-                    ReleaseDate: game.ReleaseDate,
-                    Platform: game.Platform
+                    CompletionDate: game.CompletionDate,
+                    Platform: game.Platform,
+                    Status: game.Status,
+                    Format: game.Format,
+                    HoursPlayed: game.HoursPlayed,
+                    DifficultyRating: game.DifficultyRating,
+                    Review: game.Review
                 )
             );
         })
@@ -73,9 +81,13 @@ public static class GamesEndpoints
             {
                 Name = newGame.Name,
                 GenreId = newGame.GenreId,
-                Price = newGame.Price,
-                ReleaseDate = newGame.ReleaseDate,
+                CompletionDate = newGame.CompletionDate,
                 Platform = newGame.Platform,
+                Status = newGame.Status,
+                Format = newGame.Format,
+                HoursPlayed = newGame.HoursPlayed,
+                DifficultyRating = newGame.DifficultyRating,
+                Review = newGame.Review,
                 UserId = userId.Value
             };
 
@@ -86,9 +98,13 @@ public static class GamesEndpoints
                 Id: game.Id,
                 Name: game.Name,
                 GenreId: game.GenreId,
-                Price: game.Price,
-                ReleaseDate: game.ReleaseDate,
-                Platform: game.Platform
+                CompletionDate: game.CompletionDate,
+                Platform: game.Platform,
+                Status: game.Status,
+                Format: game.Format,
+                HoursPlayed: game.HoursPlayed,
+                DifficultyRating: game.DifficultyRating,
+                Review: game.Review
             );
 
             return Results.CreatedAtRoute(GetGameEndpointName, new { id = gameDto.Id }, gameDto);
@@ -109,9 +125,13 @@ public static class GamesEndpoints
 
             existingGame.Name = updatedGame.Name;
             existingGame.GenreId = updatedGame.GenreId;
-            existingGame.Price = updatedGame.Price;
-            existingGame.ReleaseDate = updatedGame.ReleaseDate;
+            existingGame.CompletionDate = updatedGame.CompletionDate;
             existingGame.Platform = updatedGame.Platform;
+            existingGame.Status = updatedGame.Status;
+            existingGame.Format = updatedGame.Format;
+            existingGame.HoursPlayed = updatedGame.HoursPlayed;
+            existingGame.DifficultyRating = updatedGame.DifficultyRating;
+            existingGame.Review = updatedGame.Review;
 
             await dbContext.SaveChangesAsync();
 

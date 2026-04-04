@@ -1,16 +1,19 @@
-using Microsoft.EntityFrameworkCore;
-
 namespace HunterVault.Api.Models;
+using HunterVault.Api.Entities;
 
 public class Game
 {
     public int Id { get; set; }
+    public User? User { get; set; }
     public Guid UserId { get; set; }
     public required string Name { get; set; }
     public Genre? Genre { get; set; }
     public int GenreId { get; set; }
-    [Precision(18, 2)]
-    public decimal Price { get; set; }
-    public DateOnly ReleaseDate { get; set; }
+    public DateOnly? CompletionDate { get; set; }
     public string Platform { get; set; } = string.Empty;
+    public GameStatus Status { get; set; } = GameStatus.Backlog;
+    public GameFormat Format { get; set; } = GameFormat.Digital;
+    public int? HoursPlayed { get; set; }
+    public int? DifficultyRating { get; set; }
+    public string? Review { get; set; }
 }

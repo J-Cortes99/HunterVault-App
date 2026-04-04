@@ -12,7 +12,7 @@ export function GenreFilter({ genres, selected, onChange }: GenreFilterProps) {
     <div className="flex flex-wrap items-center gap-2">
       <div className="flex items-center gap-1.5 text-xs text-slate-500 mr-1">
         <Layers size={13} />
-        <span>Filter</span>
+        <span>Filtro</span>
       </div>
       <button
         onClick={() => onChange(null)}
@@ -22,7 +22,7 @@ export function GenreFilter({ genres, selected, onChange }: GenreFilterProps) {
             : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200'
         }`}
       >
-        All
+        Todos
       </button>
       {genres.map(genre => (
         <button

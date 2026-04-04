@@ -12,19 +12,19 @@ export function EmptyState({ hasFilter, onAddGame }: EmptyStateProps) {
         <Trophy size={36} className="text-amber-400" />
       </div>
       <h3 className="mb-2 font-display text-xl font-semibold text-white">
-        {hasFilter ? 'No hunts match this filter' : 'No hunts logged yet'}
+        {hasFilter ? 'Ningún hunt coincide con este filtro' : 'Aún no hay hunts registrados'}
       </h3>
       <p className="mb-6 max-w-xs text-sm text-slate-400">
         {hasFilter
-          ? 'Try selecting a different genre or clear the filter.'
-          : 'Start tracking your trophy hunts across all platforms.'}
+          ? 'Intenta seleccionar otro género o borrar el filtro.'
+          : 'Comienza a registrar tus trophy hunts en todas tus plataformas.'}
       </p>
       {!hasFilter && (
         <button
           onClick={onAddGame}
           className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-amber-500/25 transition-all duration-200 hover:scale-105"
         >
-          <Plus size={16} /> Log your first hunt
+          <Plus size={16} /> Registra tu primer hunt
         </button>
       )}
     </div>
