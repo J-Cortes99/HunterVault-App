@@ -1,17 +1,17 @@
 import { X } from 'lucide-react';
-import type { Genre, CreateGamePayload, GameDetails } from '../types';
+import type { CreateGamePayload, GameDetails } from '../types';
 import { GameForm } from './GameForm';
 
 interface GameModalProps {
   title: string;
-  genres: Genre[];
+
   initialData?: GameDetails;
   isSubmitting: boolean;
   onSubmit: (payload: CreateGamePayload) => void;
   onClose: () => void;
 }
 
-export function GameModal({ title, genres, initialData, isSubmitting, onSubmit, onClose }: GameModalProps) {
+export function GameModal({ title, initialData, isSubmitting, onSubmit, onClose }: GameModalProps) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -40,7 +40,7 @@ export function GameModal({ title, genres, initialData, isSubmitting, onSubmit, 
         <div className="mb-6 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
         <GameForm
-          genres={genres}
+
           initialData={initialData}
           isSubmitting={isSubmitting}
           onSubmit={onSubmit}

@@ -1,14 +1,12 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Search, Layers, Star, Gamepad2 } from 'lucide-react';
+import { Search, Star, Gamepad2, Clock, ListFilter, ChevronDown } from 'lucide-react';
 import type { GameSummary, GameDetails, CreateGamePayload, GameStatus } from '../types';
 import { GAME_STATUSES } from '../types';
 import { gamesApi } from '../api/games';
-import { genresApi } from '../api/genres';
 import { Header } from '../components/Header';
 import { GameCard } from '../components/GameCard';
-import { GenreFilter } from '../components/GenreFilter';
 import { SkeletonCard } from '../components/SkeletonCard';
 import { EmptyState } from '../components/EmptyState';
 import { GameModal } from '../components/GameModal';
@@ -31,10 +29,21 @@ const STATUS_TABS: { value: StatusFilter; emoji: string; label: string }[] = [
   { value: 'Dropped',   emoji: '❌', label: 'Abandonado' },
 ];
 
+type SortOption = 'recent' | 'percent-desc' | 'percent-asc' | 'diff-desc' | 'diff-asc' | 'hours-desc';
+
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: 'recent', label: 'Más recientes' },
+  { value: 'percent-desc', label: 'Mayor % completado' },
+  { value: 'percent-asc', label: 'Menor % completado' },
+  { value: 'hours-desc', label: 'Más horas invertidas' },
+  { value: 'diff-desc', label: 'Mayor dificultad' },
+  { value: 'diff-asc', label: 'Menor dificultad' },
+];
+
 export function GamesPage() {
   const qc = useQueryClient();
   const [modal, setModal]           = useState<ModalState>({ type: 'none' });
-  const [selectedGenre, setGenre]   = useState<number | null>(null);
+  const [sortOption, setSortOption] = useState<SortOption>('recent');
   const [search, setSearch]         = useState('');
   const [statusFilter, setStatus]   = useState<StatusFilter>('All');
 
@@ -42,11 +51,6 @@ export function GamesPage() {
   const { data: games = [], isLoading: gamesLoading } = useQuery({
     queryKey: ['games'],
     queryFn: gamesApi.getAll,
-  });
-
-  const { data: genres = [] } = useQuery({
-    queryKey: ['genres'],
-    queryFn: genresApi.getAll,
   });
 
   /* ─── Mutations ─── */
@@ -92,27 +96,47 @@ export function GamesPage() {
   }
 
   /* ─── Derived data ─── */
-  const filtered = useMemo(() => {
-    let result = games;
+  const filteredAndSorted = useMemo(() => {
+    let result = [...games]; // Clone
     if (statusFilter !== 'All') {
       result = result.filter(g => g.status === statusFilter);
-    }
-    if (selectedGenre !== null) {
-      const genreName = genres.find(g => g.id === selectedGenre)?.name ?? '';
-      result = result.filter(g => g.genre === genreName);
     }
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(g => g.name.toLowerCase().includes(q));
     }
+
+    switch (sortOption) {
+      case 'percent-desc':
+        result.sort((a, b) => (b.trophyPercentage || 0) - (a.trophyPercentage || 0));
+        break;
+      case 'percent-asc':
+        result.sort((a, b) => (a.trophyPercentage || 0) - (b.trophyPercentage || 0));
+        break;
+      case 'diff-desc':
+        result.sort((a, b) => (b.difficultyRating || 0) - (a.difficultyRating || 0));
+        break;
+      case 'diff-asc':
+        result.sort((a, b) => (a.difficultyRating || 0) - (b.difficultyRating || 0));
+        break;
+      case 'hours-desc':
+        result.sort((a, b) => (b.hoursPlayed || 0) - (a.hoursPlayed || 0));
+        break;
+      case 'recent':
+      default:
+        result.sort((a, b) => b.id - a.id);
+        break;
+    }
+
     return result;
-  }, [games, genres, statusFilter, selectedGenre, search]);
+  }, [games, statusFilter, search, sortOption]);
 
   const platinumedCount = games.filter(g => g.status === 'Platinumed').length;
   const ratedGames      = games.filter(g => g.difficultyRating != null);
   const avgRating       = ratedGames.length
     ? (ratedGames.reduce((s, g) => s + (g.difficultyRating ?? 0), 0) / ratedGames.length).toFixed(1)
     : '—';
+  const totalHours      = games.reduce((acc, g) => acc + (g.hoursPlayed || 0), 0);
 
   /* ─── Status tab counts ─── */
   const countByStatus = useMemo(() => {
@@ -133,9 +157,9 @@ export function GamesPage() {
         {/* Stats bar */}
         <div className="mb-8 grid grid-cols-3 gap-4">
           {[
-            { label: 'Juegos',    value: games.length,    icon: Gamepad2, color: 'text-violet-400' },
-            { label: 'Géneros',   value: genres.length,   icon: Layers, color: 'text-sky-400'   },
-            { label: 'Dificultad Media',value: avgRating,        icon: Star,   color: 'text-red-400'},
+            { label: 'Juegos',         value: games.length, icon: Gamepad2, color: 'text-violet-400' },
+            { label: 'Horas Totales',   value: `${totalHours}h`, icon: Clock,    color: 'text-emerald-400' },
+            { label: 'Dificultad Media', value: avgRating,    icon: Star,     color: 'text-amber-400' },
           ].map(stat => (
             <div key={stat.label} className="glass flex items-center gap-4 rounded-2xl px-5 py-4 animate-fade-in">
               <div className={`rounded-xl bg-white/5 p-2.5 ${stat.color}`}>
@@ -196,12 +220,27 @@ export function GamesPage() {
             />
           </div>
 
-          {/* Genre filter */}
-          <GenreFilter
-            genres={genres}
-            selected={selectedGenre}
-            onChange={setGenre}
-          />
+          {/* Sort Filter */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 mr-1">
+              <ListFilter size={13} />
+              <span>Ordenar por</span>
+            </div>
+            <div className="relative">
+              <select
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value as SortOption)}
+                className="rounded-xl border border-white/10 bg-white/5 py-2 pl-3 pr-8 text-sm text-white outline-none appearance-none cursor-pointer focus:border-amber-500 hover:bg-white/10 transition-colors"
+              >
+                {SORT_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value} className="bg-[#1e1e38]">
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            </div>
+          </div>
         </div>
 
         {/* Grid */}
@@ -209,14 +248,14 @@ export function GamesPage() {
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : filteredAndSorted.length === 0 ? (
           <EmptyState
-            hasFilter={selectedGenre !== null || search !== '' || statusFilter !== 'All'}
+            hasFilter={sortOption !== 'recent' || search !== '' || statusFilter !== 'All'}
             onAddGame={() => setModal({ type: 'create' })}
           />
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filtered.map(game => (
+            {filteredAndSorted.map(game => (
               <GameCard
                 key={game.id}
                 game={game}
@@ -232,7 +271,6 @@ export function GamesPage() {
       {modal.type === 'create' && (
         <GameModal
           title="Registrar Hunt"
-          genres={genres}
           isSubmitting={createMut.isPending}
           onSubmit={p => createMut.mutate(p)}
           onClose={() => setModal({ type: 'none' })}
@@ -242,7 +280,6 @@ export function GamesPage() {
       {modal.type === 'edit' && (
         <GameModal
           title="Editar Juego"
-          genres={genres}
           initialData={modal.gameDetails}
           isSubmitting={updateMut.isPending}
           onSubmit={p => updateMut.mutate({ id: modal.gameDetails.id, payload: p })}

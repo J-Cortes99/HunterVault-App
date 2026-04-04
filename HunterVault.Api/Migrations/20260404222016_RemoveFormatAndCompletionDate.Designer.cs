@@ -4,6 +4,7 @@ using HunterVault.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace HunterVault.Api.Migrations
 {
     [DbContext(typeof(HunterVaultContext))]
-    partial class HunterVaultContextModelSnapshot : ModelSnapshot
+    [Migration("20260404222016_RemoveFormatAndCompletionDate")]
+    partial class RemoveFormatAndCompletionDate
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -65,9 +68,8 @@ namespace HunterVault.Api.Migrations
                     b.Property<int?>("DifficultyRating")
                         .HasColumnType("int");
 
-                    b.PrimitiveCollection<string>("Genres")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("GenreId")
+                        .HasColumnType("int");
 
                     b.Property<int?>("HoursPlayed")
                         .HasColumnType("int");
@@ -94,18 +96,45 @@ namespace HunterVault.Api.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("GenreId");
+
                     b.HasIndex("UserId");
 
                     b.ToTable("Games");
                 });
 
+            modelBuilder.Entity("HunterVault.Api.Models.Genre", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Genres");
+                });
+
             modelBuilder.Entity("HunterVault.Api.Models.Game", b =>
                 {
+                    b.HasOne("HunterVault.Api.Models.Genre", "Genre")
+                        .WithMany()
+                        .HasForeignKey("GenreId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("HunterVault.Api.Entities.User", "User")
                         .WithMany("Games")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Genre");
 
                     b.Navigation("User");
                 });

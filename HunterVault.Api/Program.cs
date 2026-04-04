@@ -63,8 +63,8 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapGamesEndpoints();
-app.MapGenresEndpoints();
 app.MapProfileEndpoints();
+app.MapIgdbEndpoints();
 
 app.MigrateDb();
 

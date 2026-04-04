@@ -3,10 +3,12 @@ import { useQuery } from '@tanstack/react-query';
 import { profileApi } from '../api/profile';
 import {
   Trophy, ArrowLeft, Award, User,
-  Loader2, SearchX, Star, Clock, Disc, Wifi, Gamepad2
+  Loader2, SearchX, Star, Clock, Gamepad2
 } from 'lucide-react';
 import type { GameSummary, GameStatus } from '../types';
 import { GAME_STATUSES } from '../types';
+import { FaWindows, FaPlaystation, FaXbox } from 'react-icons/fa6';
+import { BsNintendoSwitch } from 'react-icons/bs';
 
 const GENRE_GRADIENTS: Record<string, string> = {
   Action:       'from-red-500/20 to-orange-500/20 text-orange-300 border-orange-500/20',
@@ -26,9 +28,19 @@ const PLATFORM_COLORS: Record<string, string> = {
   PC:     'text-sky-400 bg-sky-500/10 border-sky-500/20',
   PS5:    'text-blue-400 bg-blue-500/10 border-blue-500/20',
   Switch: 'text-red-400 bg-red-500/10 border-red-500/20',
-  Retro:  'text-amber-400 bg-amber-500/10 border-amber-500/20',
+  Xbox:   'text-green-400 bg-green-500/10 border-green-500/20',
 };
 const DEFAULT_PLATFORM = 'text-slate-400 bg-slate-500/10 border-slate-500/20';
+
+const PlatformIcon = ({ platform }: { platform: string }) => {
+  switch (platform) {
+    case 'PC': return <FaWindows size={14} />;
+    case 'PS5': return <FaPlaystation size={14} />;
+    case 'Switch': return <BsNintendoSwitch size={14} />;
+    case 'Xbox': return <FaXbox size={14} />;
+    default: return <span className="text-[10px] font-bold uppercase px-0.5">{platform}</span>;
+  }
+};
 
 const STATUS_STYLES: Record<GameStatus, { label: string; emoji: string; cls: string }> = {
   Backlog:    { label: 'Pendiente',  emoji: '📋', cls: 'text-slate-300 bg-slate-500/10 border-slate-500/20' },
@@ -73,22 +85,13 @@ function ProfileGameCard({ game, index }: { game: GameSummary; index: number }) 
           </span>
         </div>
 
-        {/* Format Badge */}
-        <div className="absolute top-3 right-3 z-10">
-          <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium backdrop-blur-md ${
-            game.format === 'Physical'
-              ? 'text-violet-300 bg-violet-900/40 border-violet-500/30'
-              : 'text-sky-300 bg-sky-900/40 border-sky-500/30'
-          }`}>
-            {game.format === 'Physical' ? <Disc size={10} /> : <Wifi size={10} />}
-          </span>
-        </div>
-
-        {/* Genre Badge (Bottom Left) */}
-        <div className="absolute bottom-3 left-3 z-10">
-          <span className={`inline-flex items-center gap-1.5 rounded-lg border bg-surface-950/40 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${GENRE_GRADIENTS[game.genre] ?? DEFAULT_BADGE}`}>
-            {game.genre}
-          </span>
+        {/* Genre Badges (Bottom Left) */}
+        <div className="absolute bottom-3 left-3 z-10 flex gap-1 flex-wrap w-full pr-4">
+          {game.genres && game.genres.slice(0, 3).map((g, idx) => (
+            <span key={idx} className={`inline-flex items-center gap-1.5 rounded-lg border bg-surface-950/40 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${GENRE_GRADIENTS[g] ?? DEFAULT_BADGE}`}>
+              {g}
+            </span>
+          ))}
         </div>
       </div>
 
@@ -106,8 +109,8 @@ function ProfileGameCard({ game, index }: { game: GameSummary; index: number }) 
               {game.name}
             </h3>
             {game.platform && (
-              <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${PLATFORM_COLORS[game.platform] ?? DEFAULT_PLATFORM}`}>
-                {game.platform}
+              <span className={`shrink-0 rounded p-1.5 flex items-center justify-center ${PLATFORM_COLORS[game.platform] ?? DEFAULT_PLATFORM}`} title={game.platform}>
+                <PlatformIcon platform={game.platform} />
               </span>
             )}
           </div>
@@ -209,7 +212,9 @@ export function ProfilePage() {
   const genreCounts: Record<string, number> = {};
   const platformCounts: Record<string, number> = {};
   profile.games.forEach((g: GameSummary) => {
-    genreCounts[g.genre] = (genreCounts[g.genre] || 0) + 1;
+    g.genres?.forEach(genre => {
+      genreCounts[genre] = (genreCounts[genre] || 0) + 1;
+    });
     if (g.platform) platformCounts[g.platform] = (platformCounts[g.platform] || 0) + 1;
   });
   const topGenre       = Object.entries(genreCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '—';
@@ -272,7 +277,7 @@ export function ProfilePage() {
               { label: 'Juegos',      value: profile.totalGames, icon: Gamepad2, color: 'text-violet-400' },
               { label: 'Género Fav',  value: topGenre,            icon: Award,  color: 'text-violet-400' },
               { label: 'Platinados',  value: platinumedCount,     icon: Trophy, color: 'text-yellow-400' },
-              { label: 'Dificultad Media',  value: avgRating,           icon: Star,   color: 'text-red-400' },
+              { label: 'Dificultad Media',  value: avgRating,           icon: Star,   color: 'text-amber-400' },
             ].map(stat => (
               <div key={stat.label} className="flex flex-col items-center gap-1 rounded-2xl bg-white/5 border border-white/5 px-4 py-4">
                 <stat.icon size={18} className={stat.color} />

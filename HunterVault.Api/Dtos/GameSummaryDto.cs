@@ -5,11 +5,9 @@ namespace HunterVault.Api.Dtos;
 public record GameSummaryDto(
     int Id,
     string Name,
-    string Genre,
-    DateOnly? CompletionDate,
+    List<string> Genres,
     string Platform,
     GameStatus Status,
-    GameFormat Format,
     int? HoursPlayed,
     int? DifficultyRating,
     int? TrophyPercentage,

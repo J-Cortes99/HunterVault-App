@@ -22,15 +22,12 @@ public static class ProfileEndpoints
 
             var games = await dbContext.Games
                 .Where(g => g.UserId == user.Id)
-                .Include(g => g.Genre)
                 .Select(g => new GameSummaryDto(
                     Id: g.Id,
                     Name: g.Name,
-                    Genre: g.Genre!.Name,
-                    CompletionDate: g.CompletionDate,
+                    Genres: g.Genres,
                     Platform: g.Platform,
                     Status: g.Status,
-                    Format: g.Format,
                     HoursPlayed: g.HoursPlayed,
                     DifficultyRating: g.DifficultyRating,
                     TrophyPercentage: g.TrophyPercentage,

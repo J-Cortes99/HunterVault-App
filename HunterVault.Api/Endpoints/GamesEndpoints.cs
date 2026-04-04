@@ -29,15 +29,12 @@ public static class GamesEndpoints
 
             return Results.Ok(await dbContext.Games
                 .Where(game => game.UserId == userId.Value)
-                .Include(game => game.Genre)
                 .Select(game => new GameSummaryDto(
                     Id: game.Id,
                     Name: game.Name,
-                    Genre: game.Genre!.Name,
-                    CompletionDate: game.CompletionDate,
+                    Genres: game.Genres,
                     Platform: game.Platform,
                     Status: game.Status,
-                    Format: game.Format,
                     HoursPlayed: game.HoursPlayed,
                     DifficultyRating: game.DifficultyRating,
                     TrophyPercentage: game.TrophyPercentage,
@@ -61,11 +58,9 @@ public static class GamesEndpoints
                 new GameDetailsDto(
                     Id: game.Id,
                     Name: game.Name,
-                    GenreId: game.GenreId,
-                    CompletionDate: game.CompletionDate,
+                    Genres: game.Genres,
                     Platform: game.Platform,
                     Status: game.Status,
-                    Format: game.Format,
                     HoursPlayed: game.HoursPlayed,
                     DifficultyRating: game.DifficultyRating,
                     TrophyPercentage: game.TrophyPercentage,
@@ -85,11 +80,8 @@ public static class GamesEndpoints
             Game game = new Game
             {
                 Name = newGame.Name,
-                GenreId = newGame.GenreId,
-                CompletionDate = newGame.CompletionDate,
                 Platform = newGame.Platform,
                 Status = newGame.Status,
-                Format = newGame.Format,
                 HoursPlayed = newGame.HoursPlayed,
                 DifficultyRating = newGame.DifficultyRating,
                 TrophyPercentage = newGame.Status == GameStatus.Platinumed ? 100 : (newGame.Status is GameStatus.Backlog or GameStatus.Dropped ? null : newGame.TrophyPercentage),
@@ -97,7 +89,9 @@ public static class GamesEndpoints
                 UserId = userId.Value
             };
 
-            game.CoverUrl = await igdbService.GetGameCoverUrlAsync(game.Name);
+            var details = await igdbService.GetGameDetailsAsync(game.Name);
+            game.CoverUrl = details.CoverUrl;
+            game.Genres = details.Genres;
 
             dbContext.Games.Add(game);
             await dbContext.SaveChangesAsync();
@@ -105,11 +99,9 @@ public static class GamesEndpoints
             GameDetailsDto gameDto = new GameDetailsDto(
                 Id: game.Id,
                 Name: game.Name,
-                GenreId: game.GenreId,
-                CompletionDate: game.CompletionDate,
+                Genres: game.Genres,
                 Platform: game.Platform,
                 Status: game.Status,
-                Format: game.Format,
                 HoursPlayed: game.HoursPlayed,
                 DifficultyRating: game.DifficultyRating,
                 TrophyPercentage: game.TrophyPercentage,
@@ -136,14 +128,13 @@ public static class GamesEndpoints
             if (existingGame.Name != updatedGame.Name || string.IsNullOrEmpty(existingGame.CoverUrl))
             {
                 existingGame.Name = updatedGame.Name;
-                existingGame.CoverUrl = await igdbService.GetGameCoverUrlAsync(existingGame.Name);
+                var details = await igdbService.GetGameDetailsAsync(existingGame.Name);
+                existingGame.CoverUrl = details.CoverUrl;
+                existingGame.Genres = details.Genres;
             }
             
-            existingGame.GenreId = updatedGame.GenreId;
-            existingGame.CompletionDate = updatedGame.CompletionDate;
             existingGame.Platform = updatedGame.Platform;
             existingGame.Status = updatedGame.Status;
-            existingGame.Format = updatedGame.Format;
             existingGame.HoursPlayed = updatedGame.HoursPlayed;
             existingGame.DifficultyRating = updatedGame.DifficultyRating;
             existingGame.TrophyPercentage = updatedGame.Status == GameStatus.Platinumed ? 100 : (updatedGame.Status is GameStatus.Backlog or GameStatus.Dropped ? null : updatedGame.TrophyPercentage);

@@ -73,14 +73,14 @@ public class IgdbService : IIgdbService
         }
     }
 
-    public async Task<string?> GetGameCoverUrlAsync(string gameName)
+    public async Task<(string? CoverUrl, List<string> Genres)> GetGameDetailsAsync(string gameName)
     {
         try 
         {
             await EnsureAccessTokenAsync();
 
             if (string.IsNullOrEmpty(_accessToken))
-                return null;
+                return (null, []);
 
             var mainGameCategories = new[] { 0, 8, 9, 10, 11 };
             var safeGameName = gameName.Replace("\"", "\\\"");
@@ -90,7 +90,7 @@ public class IgdbService : IIgdbService
             {
                 exactRequest.Headers.Add("Client-ID", _clientId);
                 exactRequest.Headers.Add("Authorization", $"Bearer {_accessToken}");
-                exactRequest.Content = new StringContent($"where name = \"{safeGameName}\" & cover != null; fields name, cover.url, category; limit 1;", Encoding.UTF8, "text/plain");
+                exactRequest.Content = new StringContent($"where name = \"{safeGameName}\" & cover != null; fields name, cover.url, category, genres.name; limit 1;", Encoding.UTF8, "text/plain");
 
                 var exactResponse = await _httpClient.SendAsync(exactRequest);
                 if (exactResponse.IsSuccessStatusCode)
@@ -100,9 +100,11 @@ public class IgdbService : IIgdbService
                     var exactGames = JsonSerializer.Deserialize<List<IgdbGameResponse>>(content, options);
 
                     var bestExact = exactGames?.FirstOrDefault(g => mainGameCategories.Contains(g.Category));
-                    if (bestExact?.Cover != null)
+                    if (bestExact != null)
                     {
-                        return ProcessCoverUrl(bestExact.Cover.Url);
+                        var cover = bestExact.Cover != null ? ProcessCoverUrl(bestExact.Cover.Url) : null;
+                        var genres = bestExact.Genres?.Select(g => g.Name).ToList() ?? [];
+                        return (cover, genres);
                     }
                 }
             }
@@ -112,7 +114,7 @@ public class IgdbService : IIgdbService
             {
                 searchRequest.Headers.Add("Client-ID", _clientId);
                 searchRequest.Headers.Add("Authorization", $"Bearer {_accessToken}");
-                searchRequest.Content = new StringContent($"search \"{safeGameName}\"; fields name, cover.url, category; limit 10;", Encoding.UTF8, "text/plain");
+                searchRequest.Content = new StringContent($"search \"{safeGameName}\"; fields name, cover.url, category, genres.name; limit 10;", Encoding.UTF8, "text/plain");
 
                 var searchResponse = await _httpClient.SendAsync(searchRequest);
                 if (searchResponse.IsSuccessStatusCode)
@@ -121,7 +123,7 @@ public class IgdbService : IIgdbService
                     var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
                     var igdbGames = JsonSerializer.Deserialize<List<IgdbGameResponse>>(content, options);
 
-                    if (igdbGames == null || igdbGames.Count == 0) return null;
+                    if (igdbGames == null || igdbGames.Count == 0) return (null, []);
 
                     var bestMatch = igdbGames
                         .Select(g => new 
@@ -133,20 +135,73 @@ public class IgdbService : IIgdbService
                         .ThenBy(x => x.Game.Id) 
                         .First();
 
-                    if (bestMatch.Game.Cover != null)
+                    var cover = bestMatch.Game.Cover != null ? ProcessCoverUrl(bestMatch.Game.Cover.Url) : null;
+                    var genres = bestMatch.Game.Genres?.Select(g => g.Name).ToList() ?? [];
+                    return (cover, genres);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving details from IGDB for game: {GameName}", gameName);
+        }
+
+        return (null, []);
+    }
+
+    public async Task<List<IgdbGameResponse>> SearchGamesAsync(string query)
+    {
+        var results = new List<IgdbGameResponse>();
+        try 
+        {
+            await EnsureAccessTokenAsync();
+
+            if (string.IsNullOrEmpty(_accessToken) || string.IsNullOrWhiteSpace(query))
+                return results;
+
+            var safeGameName = query.Replace("\"", "\\\"");
+
+            using (var searchRequest = new HttpRequestMessage(HttpMethod.Post, "https://api.igdb.com/v4/games"))
+            {
+                searchRequest.Headers.Add("Client-ID", _clientId);
+                searchRequest.Headers.Add("Authorization", $"Bearer {_accessToken}");
+                searchRequest.Content = new StringContent($"search \"{safeGameName}\"; fields name, cover.url, category; limit 15;", Encoding.UTF8, "text/plain");
+
+                var searchResponse = await _httpClient.SendAsync(searchRequest);
+                if (searchResponse.IsSuccessStatusCode)
+                {
+                    var content = await searchResponse.Content.ReadAsStringAsync();
+                    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var igdbGames = JsonSerializer.Deserialize<List<IgdbGameResponse>>(content, options);
+
+                    if (igdbGames != null && igdbGames.Count > 0)
                     {
-                        return ProcessCoverUrl(bestMatch.Game.Cover.Url);
+                        var mainGameCategories = new[] { 0, 8, 9, 10, 11 };
+                        
+                        foreach(var g in igdbGames)
+                        {
+                            if(g.Cover != null && !string.IsNullOrEmpty(g.Cover.Url))
+                            {
+                                g.Cover.Url = ProcessCoverUrl(g.Cover.Url);
+                            }
+                        }
+                        
+                        results = igdbGames
+                            .Where(g => mainGameCategories.Contains(g.Category))
+                            .GroupBy(g => g.Name)
+                            .Select(grp => grp.First())
+                            .Take(8)
+                            .ToList();
                     }
                 }
             }
         }
         catch (Exception ex)
         {
-            // 4. Registramos el error sin romper la aplicación
-            _logger.LogError(ex, "Error retrieving cover URL from IGDB for game: {GameName}", gameName);
+            _logger.LogError(ex, "Error searching IGDB for game: {Query}", query);
         }
 
-        return null;
+        return results;
     }
 
     private string ProcessCoverUrl(string thumbUrl)
@@ -199,6 +254,15 @@ public class IgdbGameResponse
 
     [JsonPropertyName("cover")]
     public IgdbCoverResponse? Cover { get; set; }
+
+    [JsonPropertyName("genres")]
+    public List<IgdbGenreResponse>? Genres { get; set; }
+}
+
+public class IgdbGenreResponse
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
 }
 
 public class IgdbCoverResponse

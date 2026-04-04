@@ -1,26 +1,35 @@
 import { useEffect, useState } from 'react';
 import {
-  Calendar, ChevronDown, Loader2, Save, Gamepad2, Tag,
-  Monitor, Clock, Star, FileText, Disc, Wifi, Trophy,
+  ChevronDown, Loader2, Save, Gamepad2,
+  Monitor, Clock, Star, FileText, Trophy,
 } from 'lucide-react';
-import type { Genre, CreateGamePayload, GameDetails, GameStatus, GameFormat } from '../types';
-import { GAME_STATUSES, PLATFORMS, FORMATS } from '../types';
+import { useQuery } from '@tanstack/react-query';
+import { igdbApi } from '../api/igdb';
+import { useDebounce } from '../hooks/useDebounce';
+import type { CreateGamePayload, GameDetails, GameStatus } from '../types';
+import { GAME_STATUSES, PLATFORMS } from '../types';
 
 interface GameFormProps {
-  genres: Genre[];
   initialData?: GameDetails;
   isSubmitting: boolean;
   onSubmit: (payload: CreateGamePayload) => void;
   onCancel: () => void;
 }
 
-export function GameForm({ genres, initialData, isSubmitting, onSubmit, onCancel }: GameFormProps) {
+export function GameForm({ initialData, isSubmitting, onSubmit, onCancel }: GameFormProps) {
   const [name, setName] = useState('');
-  const [genreId, setGenreId] = useState('');
-  const [completionDate, setCompletion] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
+  const debouncedName = useDebounce(name, 400);
+
+  const { data: suggestions = [], isFetching: isSearchingIgdb } = useQuery({
+    queryKey: ['igdbSearch', debouncedName],
+    queryFn: () => igdbApi.searchGames(debouncedName),
+    enabled: isFocused && debouncedName.trim().length >= 2,
+    staleTime: 60000,
+  });
+
   const [platform, setPlatform] = useState<string>(PLATFORMS[0]);
   const [status, setStatus] = useState<GameStatus>('Backlog');
-  const [format, setFormat] = useState<GameFormat>('Digital');
   const [hoursPlayed, setHoursPlayed] = useState('');
   const [difficultyRating, setRating] = useState<number | null>(null);
   const [trophyPercentage, setTrophyPercentage] = useState('');
@@ -30,25 +39,21 @@ export function GameForm({ genres, initialData, isSubmitting, onSubmit, onCancel
   useEffect(() => {
     if (initialData) {
       setName(initialData.name);
-      setGenreId(String(initialData.genreId));
-      setCompletion(initialData.completionDate ?? '');
+
       setPlatform(initialData.platform || PLATFORMS[0]);
       setStatus(initialData.status || 'Backlog');
-      setFormat(initialData.format || 'Digital');
       setHoursPlayed(initialData.hoursPlayed != null ? String(initialData.hoursPlayed) : '');
       setRating(initialData.difficultyRating ?? null);
       setTrophyPercentage(initialData.trophyPercentage != null ? String(initialData.trophyPercentage) : '');
       setReview(initialData.review ?? '');
-    } else if (genres.length > 0) {
-      setGenreId(String(genres[0].id));
     }
-  }, [initialData, genres]);
+  }, [initialData]);
 
   function validate() {
     const e: Record<string, string> = {};
     if (!name.trim()) e.name = 'El nombre es obligatorio.';
     else if (name.length > 50) e.name = 'Máximo 50 caracteres.';
-    if (!genreId) e.genreId = 'Selecciona un género.';
+
     if (!platform) e.platform = 'Selecciona una plataforma.';
     const h = parseInt(hoursPlayed);
     if (hoursPlayed && (isNaN(h) || h < 0 || h > 9999)) e.hours = 'Horas entre 0 y 9999.';
@@ -66,11 +71,9 @@ export function GameForm({ genres, initialData, isSubmitting, onSubmit, onCancel
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     onSubmit({
       name: name.trim(),
-      genreId: Number(genreId),
-      completionDate: completionDate || undefined,
+
       platform,
       status,
-      format,
       hoursPlayed: hoursPlayed ? parseInt(hoursPlayed) : undefined,
       difficultyRating: difficultyRating ?? undefined,
       trophyPercentage: (status === 'Playing' || status === 'Completed') && trophyPercentage ? parseInt(trophyPercentage) : undefined,
@@ -89,70 +92,79 @@ export function GameForm({ genres, initialData, isSubmitting, onSubmit, onCancel
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
 
       {/* Name */}
-      <div>
+      <div className="relative z-50">
         <label className={labelCls}>
           <span className="flex items-center gap-1.5 mb-1.5">
             <Gamepad2 size={14} className="text-purple-400" /> Nombre del Juego
           </span>
         </label>
-        <input
-          type="text"
-          value={name}
-          onChange={e => { setName(e.target.value); setErrors(p => ({ ...p, name: '' })); }}
-          placeholder="ej. Hollow Knight"
-          maxLength={50}
-          className={inputCls(errors.name)}
-        />
+        <div className="relative">
+          <input
+            type="text"
+            value={name}
+            onChange={e => { setName(e.target.value); setErrors(p => ({ ...p, name: '' })); }}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setTimeout(() => setIsFocused(false), 200)}
+            placeholder="ej. Hollow Knight"
+            maxLength={50}
+            autoComplete="off"
+            className={inputCls(errors.name)}
+          />
+          {isSearchingIgdb && (
+            <Loader2 size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 animate-spin" />
+          )}
+        </div>
+
+        {isFocused && suggestions.length > 0 && (
+          <div className="absolute top-full left-0 right-0 mt-2 max-h-60 overflow-y-auto rounded-xl border border-white/10 bg-[#1e1e38] p-2 shadow-xl shadow-black/50 backdrop-blur-xl animate-fade-in z-50 scrollbar-thin">
+            {suggestions.map((game, idx) => (
+              <button
+                key={`${game.name}-${idx}`}
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setName(game.name);
+                  setIsFocused(false);
+                  setErrors(p => ({ ...p, name: '' }));
+                }}
+                className="flex w-full items-center gap-3 rounded-lg p-2 text-left transition-colors hover:bg-white/5 active:bg-white/10"
+              >
+                {game.coverUrl ? (
+                  <img src={game.coverUrl} alt={game.name} className="h-10 w-7 rounded-[4px] object-cover shadow-sm bg-surface-900" />
+                ) : (
+                  <div className="flex h-10 w-7 items-center justify-center rounded-[4px] bg-surface-900 text-slate-500">
+                    <Gamepad2 size={14} />
+                  </div>
+                )}
+                <span className="font-medium text-white">{game.name}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
         {errors.name && <p className="mt-1 text-xs text-red-400">{errors.name}</p>}
       </div>
 
-      {/* Genre + Platform row */}
-      <div className="grid grid-cols-2 gap-4">
-        {/* Genre */}
-        <div>
-          <label className={labelCls}>
-            <span className="flex items-center gap-1.5 mb-1.5">
-              <Tag size={14} className="text-red-400" /> Género
-            </span>
-          </label>
-          <div className="relative">
-            <select
-              value={genreId}
-              onChange={e => { setGenreId(e.target.value); setErrors(p => ({ ...p, genreId: '' })); }}
-              className={`${inputCls(errors.genreId)} appearance-none cursor-pointer pr-10`}
-            >
-              {genres.map(g => (
-                <option key={g.id} value={g.id} className="bg-[#1e1e38] text-white">
-                  {g.name}
-                </option>
-              ))}
-            </select>
-            <ChevronDown size={15} className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          </div>
-          {errors.genreId && <p className="mt-1 text-xs text-red-400">{errors.genreId}</p>}
+      {/* Platform */}
+      <div>
+        <label className={labelCls}>
+          <span className="flex items-center gap-1.5 mb-1.5">
+            <Monitor size={14} className="text-sky-400" /> Plataforma
+          </span>
+        </label>
+        <div className="relative">
+          <select
+            value={platform}
+            onChange={e => { setPlatform(e.target.value); setErrors(p => ({ ...p, platform: '' })); }}
+            className={`${inputCls(errors.platform)} appearance-none cursor-pointer pr-10`}
+          >
+            {PLATFORMS.map(p => (
+              <option key={p} value={p} className="bg-[#1e1e38] text-white">{p}</option>
+            ))}
+          </select>
+          <ChevronDown size={15} className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
         </div>
-
-        {/* Platform */}
-        <div>
-          <label className={labelCls}>
-            <span className="flex items-center gap-1.5 mb-1.5">
-              <Monitor size={14} className="text-sky-400" /> Plataforma
-            </span>
-          </label>
-          <div className="relative">
-            <select
-              value={platform}
-              onChange={e => { setPlatform(e.target.value); setErrors(p => ({ ...p, platform: '' })); }}
-              className={`${inputCls(errors.platform)} appearance-none cursor-pointer pr-10`}
-            >
-              {PLATFORMS.map(p => (
-                <option key={p} value={p} className="bg-[#1e1e38] text-white">{p}</option>
-              ))}
-            </select>
-            <ChevronDown size={15} className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          </div>
-          {errors.platform && <p className="mt-1 text-xs text-red-400">{errors.platform}</p>}
-        </div>
+        {errors.platform && <p className="mt-1 text-xs text-red-400">{errors.platform}</p>}
       </div>
 
       {/* Status */}
@@ -200,63 +212,22 @@ export function GameForm({ genres, initialData, isSubmitting, onSubmit, onCancel
         )}
       </div>
 
-      {/* Format toggle */}
+      {/* Hours */}
       <div>
         <label className={labelCls}>
           <span className="flex items-center gap-1.5 mb-1.5">
-            <Disc size={14} className="text-violet-400" /> Formato
+            <Clock size={14} className="text-emerald-400" /> Horas Jugadas
           </span>
         </label>
-        <div className="flex rounded-xl border border-white/10 bg-white/5 p-1 gap-1">
-          {FORMATS.map(f => (
-            <button
-              key={f.value}
-              type="button"
-              onClick={() => setFormat(f.value)}
-              className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-all ${format === f.value
-                ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30'
-                : 'text-slate-400 hover:text-slate-200'
-                }`}
-            >
-              {f.value === 'Digital' ? <Wifi size={14} /> : <Disc size={14} />}
-              {f.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Hours + Release Date row */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className={labelCls}>
-            <span className="flex items-center gap-1.5 mb-1.5">
-              <Clock size={14} className="text-emerald-400" /> Horas Jugadas
-            </span>
-          </label>
-          <input
-            type="number"
-            value={hoursPlayed}
-            onChange={e => { setHoursPlayed(e.target.value); setErrors(p => ({ ...p, hours: '' })); }}
-            placeholder="ej. 45"
-            min={0} max={9999} step={1}
-            className={inputCls(errors.hours)}
-          />
-          {errors.hours && <p className="mt-1 text-xs text-red-400">{errors.hours}</p>}
-        </div>
-        <div>
-          <label className={labelCls}>
-            <span className="flex items-center gap-1.5 mb-1.5">
-              <Calendar size={14} className="text-sky-400" /> Fecha de Finalización
-            </span>
-          </label>
-          <input
-            type="date"
-            value={completionDate}
-            onChange={e => { setCompletion(e.target.value); setErrors(p => ({ ...p, completion: '' })); }}
-            className={`${inputCls(errors.completion)} [color-scheme:dark]`}
-          />
-          {errors.completion && <p className="mt-1 text-xs text-red-400">{errors.completion}</p>}
-        </div>
+        <input
+          type="number"
+          value={hoursPlayed}
+          onChange={e => { setHoursPlayed(e.target.value); setErrors(p => ({ ...p, hours: '' })); }}
+          placeholder="ej. 45"
+          min={0} max={9999} step={1}
+          className={inputCls(errors.hours)}
+        />
+        {errors.hours && <p className="mt-1 text-xs text-red-400">{errors.hours}</p>}
       </div>
 
       {/* Enjoyment Rating */}

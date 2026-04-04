@@ -1,4 +1,6 @@
-import { Clock, Edit2, Star, Trash2, Monitor, Disc, Wifi } from 'lucide-react';
+import { Clock, Edit2, Star, Trash2, Monitor } from 'lucide-react';
+import { FaWindows, FaPlaystation, FaXbox } from 'react-icons/fa6';
+import { BsNintendoSwitch } from 'react-icons/bs';
 import type { GameSummary, GameStatus } from '../types';
 
 interface GameCardProps {
@@ -24,7 +26,7 @@ const PLATFORM_COLORS: Record<string, string> = {
   PC: 'text-sky-400 bg-sky-500/10 border-sky-500/20',
   PS5: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
   Switch: 'text-red-400 bg-red-500/10 border-red-500/20',
-  Retro: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+  Xbox: 'text-green-400 bg-green-500/10 border-green-500/20',
 };
 
 const STATUS_STYLES: Record<GameStatus, { label: string; emoji: string; cls: string }> = {
@@ -38,6 +40,16 @@ const STATUS_STYLES: Record<GameStatus, { label: string; emoji: string; cls: str
 const DEFAULT_BADGE = 'from-slate-500/20 to-slate-600/20 text-slate-300 border-slate-500/20';
 const DEFAULT_PLATFORM = 'text-slate-400 bg-slate-500/10 border-slate-500/20';
 
+const PlatformIcon = ({ platform }: { platform: string }) => {
+  switch (platform) {
+    case 'PC': return <FaWindows size={14} />;
+    case 'PS5': return <FaPlaystation size={14} />;
+    case 'Switch': return <BsNintendoSwitch size={14} />;
+    case 'Xbox': return <FaXbox size={14} />;
+    default: return <span className="text-[10px] font-bold uppercase px-0.5">{platform}</span>;
+  }
+};
+
 
 
 export function GameCard({ game, onEdit, onDelete }: GameCardProps) {
@@ -45,14 +57,13 @@ export function GameCard({ game, onEdit, onDelete }: GameCardProps) {
   const isPlat = game.status === 'Platinumed';
 
   return (
-    <article className={`glass group relative flex flex-col overflow-hidden rounded-2xl transition-all duration-300 hover:-translate-y-1 hover:shadow-xl animate-fade-in ${
-      isPlat ? 'hover:border-amber-400/40 hover:shadow-amber-500/15' : 'hover:border-amber-500/20 hover:shadow-amber-500/10'
-    }`}>
+    <article className={`glass group relative flex flex-col overflow-hidden rounded-2xl transition-all duration-300 hover:-translate-y-1 hover:shadow-xl animate-fade-in ${isPlat ? 'hover:border-amber-400/40 hover:shadow-amber-500/15' : 'hover:border-amber-500/20 hover:shadow-amber-500/10'
+      }`}>
       {/* Top Section: Cover Image */}
       <div className="relative aspect-[3/4] w-full overflow-hidden bg-surface-900">
         {game.coverUrl ? (
-          <img 
-            src={game.coverUrl} 
+          <img
+            src={game.coverUrl}
             alt={game.name}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
@@ -61,7 +72,7 @@ export function GameCard({ game, onEdit, onDelete }: GameCardProps) {
             <Monitor size={48} strokeWidth={1} />
           </div>
         )}
-        
+
         {/* Floating Status Badge */}
         <div className="absolute top-3 left-3 z-10">
           <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-bold backdrop-blur-md ${statusStyle.cls.replace('bg-', 'bg-').replace('/10', '/40')}`}>
@@ -70,22 +81,13 @@ export function GameCard({ game, onEdit, onDelete }: GameCardProps) {
           </span>
         </div>
 
-        {/* Format Badge */}
-        <div className="absolute top-3 right-3 z-10">
-          <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium backdrop-blur-md ${
-            game.format === 'Physical'
-              ? 'text-violet-300 bg-violet-900/40 border-violet-500/30'
-              : 'text-sky-300 bg-sky-900/40 border-sky-500/30'
-          }`}>
-            {game.format === 'Physical' ? <Disc size={10} /> : <Wifi size={10} />}
-          </span>
-        </div>
-
-        {/* Genre Badge (Bottom Left) */}
-        <div className="absolute bottom-3 left-3 z-10">
-          <span className={`inline-flex items-center gap-1.5 rounded-lg border bg-surface-950/40 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${GENRE_GRADIENTS[game.genre] ?? DEFAULT_BADGE}`}>
-            {game.genre}
-          </span>
+        {/* Genres Badge (Bottom Left) */}
+        <div className="absolute bottom-3 left-3 z-10 flex gap-1 flex-wrap w-full pr-4">
+          {game.genres && game.genres.slice(0, 3).map((g, idx) => (
+            <span key={idx} className={`inline-flex items-center gap-1.5 rounded-lg border bg-surface-950/40 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${GENRE_GRADIENTS[g] ?? DEFAULT_BADGE}`}>
+              {g}
+            </span>
+          ))}
         </div>
       </div>
 
@@ -103,8 +105,8 @@ export function GameCard({ game, onEdit, onDelete }: GameCardProps) {
               {game.name}
             </h3>
             {game.platform && (
-              <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${PLATFORM_COLORS[game.platform] ?? DEFAULT_PLATFORM}`}>
-                {game.platform}
+              <span className={`shrink-0 rounded p-1.5 flex items-center justify-center ${PLATFORM_COLORS[game.platform] ?? DEFAULT_PLATFORM}`} title={game.platform}>
+                <PlatformIcon platform={game.platform} />
               </span>
             )}
           </div>
@@ -150,10 +152,9 @@ export function GameCard({ game, onEdit, onDelete }: GameCardProps) {
               <span className="text-amber-400">{game.trophyPercentage}%</span>
             </div>
             <div className="h-2 w-full overflow-hidden rounded-full bg-white/5 shadow-inner">
-              <div 
-                className={`h-full rounded-full transition-all duration-700 shadow-[0_0_8px_rgba(251,191,36,0.3)] ${
-                  isPlat ? 'bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 animate-shimmer' : 'bg-gradient-to-r from-amber-500 to-yellow-400'
-                }`}
+              <div
+                className={`h-full rounded-full transition-all duration-700 shadow-[0_0_8px_rgba(251,191,36,0.3)] ${isPlat ? 'bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 animate-shimmer' : 'bg-gradient-to-r from-amber-500 to-yellow-400'
+                  }`}
                 style={{ width: `${game.trophyPercentage}%` }}
               />
             </div>
