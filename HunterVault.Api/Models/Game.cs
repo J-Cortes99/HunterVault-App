@@ -15,5 +15,7 @@ public class Game
     public GameFormat Format { get; set; } = GameFormat.Digital;
     public int? HoursPlayed { get; set; }
     public int? DifficultyRating { get; set; }
+    public int? TrophyPercentage { get; set; }
+    public string? CoverUrl { get; set; }
     public string? Review { get; set; }
 }

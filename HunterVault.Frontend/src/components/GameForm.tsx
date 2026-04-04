@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   Calendar, ChevronDown, Loader2, Save, Gamepad2, Tag,
-  Monitor, Clock, Star, FileText, Disc, Wifi,
+  Monitor, Clock, Star, FileText, Disc, Wifi, Trophy,
 } from 'lucide-react';
 import type { Genre, CreateGamePayload, GameDetails, GameStatus, GameFormat } from '../types';
 import { GAME_STATUSES, PLATFORMS, FORMATS } from '../types';
@@ -23,6 +23,7 @@ export function GameForm({ genres, initialData, isSubmitting, onSubmit, onCancel
   const [format, setFormat] = useState<GameFormat>('Digital');
   const [hoursPlayed, setHoursPlayed] = useState('');
   const [difficultyRating, setRating] = useState<number | null>(null);
+  const [trophyPercentage, setTrophyPercentage] = useState('');
   const [review, setReview] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -36,6 +37,7 @@ export function GameForm({ genres, initialData, isSubmitting, onSubmit, onCancel
       setFormat(initialData.format || 'Digital');
       setHoursPlayed(initialData.hoursPlayed != null ? String(initialData.hoursPlayed) : '');
       setRating(initialData.difficultyRating ?? null);
+      setTrophyPercentage(initialData.trophyPercentage != null ? String(initialData.trophyPercentage) : '');
       setReview(initialData.review ?? '');
     } else if (genres.length > 0) {
       setGenreId(String(genres[0].id));
@@ -52,6 +54,9 @@ export function GameForm({ genres, initialData, isSubmitting, onSubmit, onCancel
     if (hoursPlayed && (isNaN(h) || h < 0 || h > 9999)) e.hours = 'Horas entre 0 y 9999.';
     if (difficultyRating !== null && (difficultyRating < 1 || difficultyRating > 10))
       e.rating = 'La puntuación debe ser entre 1 y 10.';
+    const tp = parseInt(trophyPercentage);
+    if ((status === 'Playing' || status === 'Completed') && trophyPercentage && (isNaN(tp) || tp < 0 || tp > 100))
+      e.trophy = 'El porcentaje debe ser entre 0 y 100.';
     return e;
   }
 
@@ -68,6 +73,7 @@ export function GameForm({ genres, initialData, isSubmitting, onSubmit, onCancel
       format,
       hoursPlayed: hoursPlayed ? parseInt(hoursPlayed) : undefined,
       difficultyRating: difficultyRating ?? undefined,
+      trophyPercentage: (status === 'Playing' || status === 'Completed') && trophyPercentage ? parseInt(trophyPercentage) : undefined,
       review: review.trim() || undefined,
     });
   }
@@ -86,7 +92,7 @@ export function GameForm({ genres, initialData, isSubmitting, onSubmit, onCancel
       <div>
         <label className={labelCls}>
           <span className="flex items-center gap-1.5 mb-1.5">
-            <Gamepad2 size={14} className="text-amber-400" /> Nombre del Juego
+            <Gamepad2 size={14} className="text-purple-400" /> Nombre del Juego
           </span>
         </label>
         <input
@@ -106,7 +112,7 @@ export function GameForm({ genres, initialData, isSubmitting, onSubmit, onCancel
         <div>
           <label className={labelCls}>
             <span className="flex items-center gap-1.5 mb-1.5">
-              <Tag size={14} className="text-amber-400" /> Género
+              <Tag size={14} className="text-red-400" /> Género
             </span>
           </label>
           <div className="relative">
@@ -172,6 +178,26 @@ export function GameForm({ genres, initialData, isSubmitting, onSubmit, onCancel
             </button>
           ))}
         </div>
+        
+        {/* Trophy Percentage (Visible solo si Playing o Completed) */}
+        {(status === 'Playing' || status === 'Completed') && (
+          <div className="mt-4 animate-fade-in">
+            <label className={labelCls}>
+              <span className="flex items-center gap-1.5 mb-1.5">
+                <Trophy size={14} className="text-amber-400" /> Progreso de Trofeos (%)
+              </span>
+            </label>
+            <input
+              type="number"
+              value={trophyPercentage}
+              onChange={e => { setTrophyPercentage(e.target.value); setErrors(p => ({ ...p, trophy: '' })); }}
+              placeholder="ej. 85"
+              min={0} max={100} step={1}
+              className={inputCls(errors.trophy)}
+            />
+            {errors.trophy && <p className="mt-1 text-xs text-red-400">{errors.trophy}</p>}
+          </div>
+        )}
       </div>
 
       {/* Format toggle */}

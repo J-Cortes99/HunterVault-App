@@ -109,7 +109,7 @@ export function AuthPage() {
         {/* Card */}
         <div className="glass rounded-2xl p-8 shadow-2xl shadow-black/40">
           {/* Tabs */}
-          <div className="mb-8 flex overflow-hidden rounded-xl bg-[#080812] p-1">
+          <div className="mb-8 flex overflow-hidden rounded-xl bg-surface-950 p-1">
             <button
               type="button"
               onClick={() => mode !== 'login' && toggleMode()}

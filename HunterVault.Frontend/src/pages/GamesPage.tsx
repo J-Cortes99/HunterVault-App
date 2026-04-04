@@ -125,7 +125,7 @@ export function GamesPage() {
 
   /* ─── Render ─── */
   return (
-    <div className="min-h-screen bg-[#0f0f1a]">
+    <div className="min-h-screen bg-surface-900">
       <Header onAddGame={() => setModal({ type: 'create' })} />
 
       <main className="mx-auto max-w-7xl px-6 py-8">

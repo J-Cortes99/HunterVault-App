@@ -1,6 +1,5 @@
-import { Calendar, Clock, Edit2, Star, Tag, Trash2, Monitor, Disc, Wifi } from 'lucide-react';
+import { Clock, Edit2, Star, Trash2, Monitor, Disc, Wifi } from 'lucide-react';
 import type { GameSummary, GameStatus } from '../types';
-import { GAME_STATUSES } from '../types';
 
 interface GameCardProps {
   game: GameSummary;
@@ -9,162 +8,175 @@ interface GameCardProps {
 }
 
 const GENRE_GRADIENTS: Record<string, string> = {
-  Action:       'from-red-500/20 to-orange-500/20 text-orange-300 border-orange-500/20',
-  Adventure:    'from-green-500/20 to-teal-500/20 text-teal-300 border-teal-500/20',
-  RPG:          'from-purple-500/20 to-violet-500/20 text-violet-300 border-violet-500/20',
-  Strategy:     'from-blue-500/20 to-cyan-500/20 text-cyan-300 border-cyan-500/20',
-  Sports:       'from-yellow-500/20 to-lime-500/20 text-lime-300 border-lime-500/20',
-  Horror:       'from-red-900/30 to-rose-700/20 text-rose-300 border-rose-500/20',
-  Simulation:   'from-sky-500/20 to-blue-500/20 text-sky-300 border-sky-500/20',
-  Fighting:     'from-orange-600/20 to-red-600/20 text-red-300 border-red-500/20',
-  Racing:       'from-amber-500/20 to-yellow-500/20 text-amber-300 border-amber-500/20',
-  Puzzle:       'from-pink-500/20 to-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/20',
+  Action: 'from-red-500/20 to-orange-500/20 text-orange-300 border-orange-500/20',
+  Adventure: 'from-green-500/20 to-teal-500/20 text-teal-300 border-teal-500/20',
+  RPG: 'from-purple-500/20 to-violet-500/20 text-violet-300 border-violet-500/20',
+  Strategy: 'from-blue-500/20 to-cyan-500/20 text-cyan-300 border-cyan-500/20',
+  Sports: 'from-yellow-500/20 to-lime-500/20 text-lime-300 border-lime-500/20',
+  Horror: 'from-red-900/30 to-rose-700/20 text-rose-300 border-rose-500/20',
+  Simulation: 'from-sky-500/20 to-blue-500/20 text-sky-300 border-sky-500/20',
+  Fighting: 'from-orange-600/20 to-red-600/20 text-red-300 border-red-500/20',
+  Racing: 'from-amber-500/20 to-yellow-500/20 text-amber-300 border-amber-500/20',
+  Puzzle: 'from-pink-500/20 to-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/20',
 };
 
 const PLATFORM_COLORS: Record<string, string> = {
-  PC:     'text-sky-400 bg-sky-500/10 border-sky-500/20',
-  PS5:    'text-blue-400 bg-blue-500/10 border-blue-500/20',
+  PC: 'text-sky-400 bg-sky-500/10 border-sky-500/20',
+  PS5: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
   Switch: 'text-red-400 bg-red-500/10 border-red-500/20',
-  Retro:  'text-amber-400 bg-amber-500/10 border-amber-500/20',
+  Retro: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
 };
 
 const STATUS_STYLES: Record<GameStatus, { label: string; emoji: string; cls: string }> = {
-  Backlog:    { label: 'Pendiente',   emoji: '📋', cls: 'text-slate-300 bg-slate-500/10 border-slate-500/20' },
-  Playing:    { label: 'Jugando',     emoji: '🎮', cls: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20' },
-  Completed:  { label: 'Completado',  emoji: '✅', cls: 'text-sky-300 bg-sky-500/10 border-sky-500/20' },
-  Platinumed: { label: 'Platinado',   emoji: '🏆', cls: 'text-amber-300 bg-amber-500/10 border-amber-500/25' },
-  Dropped:    { label: 'Abandonado',  emoji: '❌', cls: 'text-red-300 bg-red-500/10 border-red-500/20' },
+  Backlog: { label: 'Pendiente', emoji: '📋', cls: 'text-slate-300 bg-slate-500/10 border-slate-500/20' },
+  Playing: { label: 'Jugando', emoji: '🎮', cls: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20' },
+  Completed: { label: 'Completado', emoji: '✅', cls: 'text-sky-300 bg-sky-500/10 border-sky-500/20' },
+  Platinumed: { label: 'Platinado', emoji: '🏆', cls: 'text-amber-300 bg-amber-500/10 border-amber-500/25' },
+  Dropped: { label: 'Abandonado', emoji: '❌', cls: 'text-red-300 bg-red-500/10 border-red-500/20' },
 };
 
-const DEFAULT_BADGE   = 'from-slate-500/20 to-slate-600/20 text-slate-300 border-slate-500/20';
+const DEFAULT_BADGE = 'from-slate-500/20 to-slate-600/20 text-slate-300 border-slate-500/20';
 const DEFAULT_PLATFORM = 'text-slate-400 bg-slate-500/10 border-slate-500/20';
 
-function formatDate(raw: string) {
-  const [year, month, day] = raw.split('-').map(Number);
-  return new Date(year, month - 1, day).toLocaleDateString('es-ES', {
-    year: 'numeric', month: 'short', day: 'numeric',
-  });
-}
 
-function RatingDots({ rating }: { rating: number }) {
-  const color =
-    rating <= 4 ? 'bg-emerald-400' :
-    rating <= 7 ? 'bg-amber-400' :
-    'bg-red-400';
-
-  return (
-    <div className="flex items-center gap-1">
-      {Array.from({ length: 10 }, (_, i) => (
-        <div
-          key={i}
-          className={`h-1.5 w-1.5 rounded-full transition-all ${i < rating ? color : 'bg-white/10'}`}
-        />
-      ))}
-      <span className="ml-1.5 text-xs font-bold text-white">{rating}/10</span>
-    </div>
-  );
-}
 
 export function GameCard({ game, onEdit, onDelete }: GameCardProps) {
   const statusStyle = STATUS_STYLES[game.status] ?? STATUS_STYLES.Backlog;
   const isPlat = game.status === 'Platinumed';
 
   return (
-    <article className={`glass group relative flex flex-col overflow-hidden rounded-2xl p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl animate-fade-in ${
+    <article className={`glass group relative flex flex-col overflow-hidden rounded-2xl transition-all duration-300 hover:-translate-y-1 hover:shadow-xl animate-fade-in ${
       isPlat ? 'hover:border-amber-400/40 hover:shadow-amber-500/15' : 'hover:border-amber-500/20 hover:shadow-amber-500/10'
     }`}>
-      {/* Top accent bar */}
-      <div className={`absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r opacity-0 transition-opacity duration-300 group-hover:opacity-100 ${
-        isPlat ? 'from-amber-400 via-yellow-300 to-amber-400' : 'from-amber-500 via-yellow-500 to-amber-500'
-      }`} />
-
-      {/* Platinum shimmer overlay */}
-      {isPlat && (
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-amber-500/5 to-yellow-400/5 rounded-2xl" />
-      )}
-
-      {/* Status + Format row */}
-      <div className="mb-3 flex items-center gap-2 flex-wrap">
-        <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-xs font-medium ${statusStyle.cls}`}>
-          <span className="leading-none">{statusStyle.emoji}</span>
-          {statusStyle.label}
-        </span>
-        <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-xs font-medium ${
-          game.format === 'Physical'
-            ? 'text-violet-300 bg-violet-500/10 border-violet-500/20'
-            : 'text-sky-300 bg-sky-500/10 border-sky-500/20'
-        }`}>
-          {game.format === 'Physical' ? <Disc size={10} /> : <Wifi size={10} />}
-          {game.format === 'Physical' ? 'Físico' : 'Digital'}
-        </span>
-      </div>
-
-      {/* Genre + Platform badges */}
-      <div className="mb-3 flex items-center gap-2 flex-wrap">
-        <span className={`inline-flex items-center gap-1.5 rounded-lg border bg-gradient-to-r px-2.5 py-1 text-xs font-medium ${GENRE_GRADIENTS[game.genre] ?? DEFAULT_BADGE}`}>
-          <Tag size={11} />
-          {game.genre}
-        </span>
-        {game.platform && (
-          <span className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium ${PLATFORM_COLORS[game.platform] ?? DEFAULT_PLATFORM}`}>
-            <Monitor size={11} />
-            {game.platform}
+      {/* Top Section: Cover Image */}
+      <div className="relative aspect-[3/4] w-full overflow-hidden bg-surface-900">
+        {game.coverUrl ? (
+          <img 
+            src={game.coverUrl} 
+            alt={game.name}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-surface-800 text-surface-400">
+            <Monitor size={48} strokeWidth={1} />
+          </div>
+        )}
+        
+        {/* Floating Status Badge */}
+        <div className="absolute top-3 left-3 z-10">
+          <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-bold backdrop-blur-md ${statusStyle.cls.replace('bg-', 'bg-').replace('/10', '/40')}`}>
+            <span className="leading-none">{statusStyle.emoji}</span>
+            {statusStyle.label.toUpperCase()}
           </span>
-        )}
+        </div>
+
+        {/* Format Badge */}
+        <div className="absolute top-3 right-3 z-10">
+          <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium backdrop-blur-md ${
+            game.format === 'Physical'
+              ? 'text-violet-300 bg-violet-900/40 border-violet-500/30'
+              : 'text-sky-300 bg-sky-900/40 border-sky-500/30'
+          }`}>
+            {game.format === 'Physical' ? <Disc size={10} /> : <Wifi size={10} />}
+          </span>
+        </div>
+
+        {/* Genre Badge (Bottom Left) */}
+        <div className="absolute bottom-3 left-3 z-10">
+          <span className={`inline-flex items-center gap-1.5 rounded-lg border bg-surface-950/40 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${GENRE_GRADIENTS[game.genre] ?? DEFAULT_BADGE}`}>
+            {game.genre}
+          </span>
+        </div>
       </div>
 
-      {/* Name */}
-      <h3 className="mb-3 font-display text-lg font-semibold leading-snug text-white transition-colors group-hover:text-amber-300">
-        {game.name}
-      </h3>
+      {/* Bottom Section: Details */}
+      <div className="relative flex flex-col p-5">
+        {/* Platinum shimmer overlay */}
+        {isPlat && (
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-amber-500/5 to-yellow-400/5" />
+        )}
 
-      {/* Rating */}
-      {game.difficultyRating != null && (
-        <div className="mb-3 flex items-center gap-1.5">
-          <Star size={13} className="text-amber-400" />
-          <RatingDots rating={game.difficultyRating} />
+        {/* Name & Platform */}
+        <div className="mb-3">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="font-display text-lg font-bold leading-tight text-white transition-colors group-hover:text-amber-300">
+              {game.name}
+            </h3>
+            {game.platform && (
+              <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${PLATFORM_COLORS[game.platform] ?? DEFAULT_PLATFORM}`}>
+                {game.platform}
+              </span>
+            )}
+          </div>
         </div>
-      )}
 
-      {/* Review */}
-      {game.review && (
-        <div className="mb-3 text-sm italic text-slate-400 line-clamp-2 border-l border-amber-500/20 pl-2">
-          "{game.review}"
+        {/* Rating & Stats Grid */}
+        <div className="mb-4 grid grid-cols-2 gap-4 border-y border-white/5 py-3">
+          {game.difficultyRating != null && (
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Dificultad</span>
+              <div className="flex items-center gap-1.5">
+                <Star size={12} className="text-amber-400" />
+                <span className="text-sm font-bold text-white">{game.difficultyRating}/10</span>
+              </div>
+            </div>
+          )}
+          {game.hoursPlayed != null && (
+            <div className="flex flex-col gap-1 text-right">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Tiempo</span>
+              <div className="flex items-center justify-end gap-1.5">
+                <Clock size={12} className="text-emerald-400" />
+                <span className="text-sm font-bold text-white">{game.hoursPlayed}h</span>
+              </div>
+            </div>
+          )}
         </div>
-      )}
 
-      {/* Meta */}
-      <div className="mt-auto flex flex-col gap-2">
-        {game.hoursPlayed != null && (
-          <div className="flex items-center gap-2 text-sm text-slate-400">
-            <Clock size={13} className="text-emerald-400" />
-            <span><span className="font-semibold text-emerald-400">{game.hoursPlayed}h</span> jugadas</span>
+        {/* Review */}
+        {game.review && (
+          <div className="mb-4">
+            <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Valoración</span>
+            <p className="text-sm italic text-slate-400 line-clamp-2 border-l-2 border-amber-500/30 pl-3">
+              "{game.review}"
+            </p>
           </div>
         )}
-        {game.completionDate && (
-          <div className="flex items-center gap-2 text-sm text-slate-400">
-            <Calendar size={13} />
-            <span>{formatDate(game.completionDate)}</span>
+
+        {/* Trophy Progress */}
+        {game.trophyPercentage != null && (
+          <div className="mb-5">
+            <div className="mb-2 flex justify-between text-[10px] font-bold uppercase tracking-wider">
+              <span className="text-slate-500">Trofeos</span>
+              <span className="text-amber-400">{game.trophyPercentage}%</span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-white/5 shadow-inner">
+              <div 
+                className={`h-full rounded-full transition-all duration-700 shadow-[0_0_8px_rgba(251,191,36,0.3)] ${
+                  isPlat ? 'bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 animate-shimmer' : 'bg-gradient-to-r from-amber-500 to-yellow-400'
+                }`}
+                style={{ width: `${game.trophyPercentage}%` }}
+              />
+            </div>
           </div>
         )}
-      </div>
 
-      {/* Actions */}
-      <div className="mt-4 flex gap-2 border-t border-white/5 pt-4">
-        <button
-          onClick={() => onEdit(game)}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-white/5 px-3 py-2 text-sm font-medium text-slate-300 transition-all duration-150 hover:bg-amber-500/20 hover:text-amber-300"
-        >
-          <Edit2 size={14} />
-          Editar
-        </button>
-        <button
-          onClick={() => onDelete(game)}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-white/5 px-3 py-2 text-sm font-medium text-slate-300 transition-all duration-150 hover:bg-red-500/20 hover:text-red-400"
-        >
-          <Trash2 size={14} />
-          Eliminar
-        </button>
+        {/* Actions */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => onEdit(game)}
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-white/5 px-3 py-2.5 text-xs font-bold text-slate-300 transition-all duration-200 hover:bg-amber-500/20 hover:text-amber-300 hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <Edit2 size={14} />
+            EDITAR
+          </button>
+          <button
+            onClick={() => onDelete(game)}
+            className="flex aspect-square items-center justify-center rounded-xl bg-white/5 px-3 py-2.5 text-slate-300 transition-all duration-200 hover:bg-red-500/20 hover:text-red-400 hover:scale-[1.02] active:scale-[0.98]"
+            title="Eliminar"
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
       </div>
     </article>
   );

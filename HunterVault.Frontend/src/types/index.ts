@@ -32,6 +32,8 @@ export interface GameSummary {
   format: GameFormat;
   hoursPlayed?: number;
   difficultyRating?: number;
+  trophyPercentage?: number;
+  coverUrl?: string;
   review?: string;
 }
 
@@ -45,6 +47,8 @@ export interface GameDetails {
   format: GameFormat;
   hoursPlayed?: number;
   difficultyRating?: number;
+  trophyPercentage?: number;
+  coverUrl?: string;
   review?: string;
 }
 
@@ -57,6 +61,8 @@ export interface CreateGamePayload {
   format: GameFormat;
   hoursPlayed?: number;
   difficultyRating?: number;
+  trophyPercentage?: number;
+  coverUrl?: string;
   review?: string;
 }
 

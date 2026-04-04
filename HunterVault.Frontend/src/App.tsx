@@ -46,14 +46,14 @@ export function App() {
             position="bottom-right"
             toastOptions={{
               style: {
-                background: '#1e1e38',
-                color: '#e2e8f0',
+                background: '#1e293b',
+                color: '#f8fafc',
                 border: '1px solid rgba(255,255,255,0.08)',
                 borderRadius: '12px',
                 fontSize: '14px',
               },
-              success: { iconTheme: { primary: '#f59e0b', secondary: '#1e1e38' } },
-              error:   { iconTheme: { primary: '#f87171', secondary: '#1e1e38' } },
+              success: { iconTheme: { primary: '#f59e0b', secondary: '#1e293b' } },
+              error:   { iconTheme: { primary: '#f87171', secondary: '#1e293b' } },
             }}
           />
           <ReactQueryDevtools initialIsOpen={false} />

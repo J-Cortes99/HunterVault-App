@@ -2,6 +2,7 @@ using System.Security.Claims;
 using HunterVault.Api.Data;
 using HunterVault.Api.Dtos;
 using HunterVault.Api.Models;
+using HunterVault.Api.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace HunterVault.Api.Endpoints;
@@ -39,6 +40,8 @@ public static class GamesEndpoints
                     Format: game.Format,
                     HoursPlayed: game.HoursPlayed,
                     DifficultyRating: game.DifficultyRating,
+                    TrophyPercentage: game.TrophyPercentage,
+                    CoverUrl: game.CoverUrl,
                     Review: game.Review
                 ))
                 .AsNoTracking()
@@ -65,6 +68,8 @@ public static class GamesEndpoints
                     Format: game.Format,
                     HoursPlayed: game.HoursPlayed,
                     DifficultyRating: game.DifficultyRating,
+                    TrophyPercentage: game.TrophyPercentage,
+                    CoverUrl: game.CoverUrl,
                     Review: game.Review
                 )
             );
@@ -72,7 +77,7 @@ public static class GamesEndpoints
             .WithName(GetGameEndpointName);
 
         // POST /games
-        group.MapPost("/", async (CreateGameDto newGame, ClaimsPrincipal user, HunterVaultContext dbContext) =>
+        group.MapPost("/", async (CreateGameDto newGame, ClaimsPrincipal user, HunterVaultContext dbContext, IIgdbService igdbService) =>
         {
             var userId = GetUserId(user);
             if (userId is null) return Results.Unauthorized();
@@ -87,9 +92,12 @@ public static class GamesEndpoints
                 Format = newGame.Format,
                 HoursPlayed = newGame.HoursPlayed,
                 DifficultyRating = newGame.DifficultyRating,
+                TrophyPercentage = newGame.Status == GameStatus.Platinumed ? 100 : (newGame.Status is GameStatus.Backlog or GameStatus.Dropped ? null : newGame.TrophyPercentage),
                 Review = newGame.Review,
                 UserId = userId.Value
             };
+
+            game.CoverUrl = await igdbService.GetGameCoverUrlAsync(game.Name);
 
             dbContext.Games.Add(game);
             await dbContext.SaveChangesAsync();
@@ -104,6 +112,8 @@ public static class GamesEndpoints
                 Format: game.Format,
                 HoursPlayed: game.HoursPlayed,
                 DifficultyRating: game.DifficultyRating,
+                TrophyPercentage: game.TrophyPercentage,
+                CoverUrl: game.CoverUrl,
                 Review: game.Review
             );
 
@@ -111,7 +121,7 @@ public static class GamesEndpoints
         });
 
         // PUT /games/1
-        group.MapPut("/{id}", async (int id, UpdateGameDto updatedGame, ClaimsPrincipal user, HunterVaultContext dbContext) =>
+        group.MapPut("/{id}", async (int id, UpdateGameDto updatedGame, ClaimsPrincipal user, HunterVaultContext dbContext, IIgdbService igdbService) =>
         {
             var userId = GetUserId(user);
             if (userId is null) return Results.Unauthorized();
@@ -123,7 +133,12 @@ public static class GamesEndpoints
                 return Results.NotFound();
             }
 
-            existingGame.Name = updatedGame.Name;
+            if (existingGame.Name != updatedGame.Name || string.IsNullOrEmpty(existingGame.CoverUrl))
+            {
+                existingGame.Name = updatedGame.Name;
+                existingGame.CoverUrl = await igdbService.GetGameCoverUrlAsync(existingGame.Name);
+            }
+            
             existingGame.GenreId = updatedGame.GenreId;
             existingGame.CompletionDate = updatedGame.CompletionDate;
             existingGame.Platform = updatedGame.Platform;
@@ -131,6 +146,7 @@ public static class GamesEndpoints
             existingGame.Format = updatedGame.Format;
             existingGame.HoursPlayed = updatedGame.HoursPlayed;
             existingGame.DifficultyRating = updatedGame.DifficultyRating;
+            existingGame.TrophyPercentage = updatedGame.Status == GameStatus.Platinumed ? 100 : (updatedGame.Status is GameStatus.Backlog or GameStatus.Dropped ? null : updatedGame.TrophyPercentage);
             existingGame.Review = updatedGame.Review;
 
             await dbContext.SaveChangesAsync();

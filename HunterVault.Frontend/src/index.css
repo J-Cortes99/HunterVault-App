@@ -15,12 +15,12 @@
   --color-brand-800: #92400e;
   --color-brand-900: #78350f;
 
-  --color-surface-950: #080812;
-  --color-surface-900: #0f0f1a;
-  --color-surface-800: #16162a;
-  --color-surface-700: #1e1e38;
-  --color-surface-600: #282847;
-  --color-surface-500: #3a3a5c;
+  --color-surface-950: #020617;
+  --color-surface-900: #0f172a;
+  --color-surface-800: #1e293b;
+  --color-surface-700: #334155;
+  --color-surface-600: #475569;
+  --color-surface-500: #64748b;
 }
 
 * {
@@ -33,7 +33,7 @@ html {
 
 body {
   background-color: var(--color-surface-900);
-  color: #e2e8f0;
+  color: #f8fafc; /* text-slate-50 */
   font-family: var(--font-sans);
   min-height: 100vh;
 }
@@ -90,7 +90,7 @@ body {
 .glow-brand        { animation: pulse-glow 2s infinite; }
 
 .skeleton {
-  background: linear-gradient(90deg, #1e1e38 25%, #282847 50%, #1e1e38 75%);
+  background: linear-gradient(90deg, var(--color-surface-700) 25%, var(--color-surface-600) 50%, var(--color-surface-700) 75%);
   background-size: 400px 100%;
   animation: shimmer 1.4s ease infinite;
   border-radius: 6px;
@@ -98,8 +98,8 @@ body {
 
 /* Glass card */
 .glass {
-  background: rgba(22, 22, 42, 0.8);
+  background: rgba(30, 41, 59, 0.75); /* slate-800 */
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }

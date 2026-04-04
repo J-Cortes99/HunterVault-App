@@ -12,5 +12,7 @@ public record GameSummaryDto(
     GameFormat Format,
     int? HoursPlayed,
     int? DifficultyRating,
+    int? TrophyPercentage,
+    string? CoverUrl,
     string? Review
 );

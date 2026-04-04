@@ -33,6 +33,8 @@ public static class ProfileEndpoints
                     Format: g.Format,
                     HoursPlayed: g.HoursPlayed,
                     DifficultyRating: g.DifficultyRating,
+                    TrophyPercentage: g.TrophyPercentage,
+                    CoverUrl: g.CoverUrl,
                     Review: g.Review
                 ))
                 .AsNoTracking()
