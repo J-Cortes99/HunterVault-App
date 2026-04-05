@@ -49,7 +49,7 @@ jobs:
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'huntervault-api-jorge'
+          app-name: 'huntervault-api'
           slot-name: 'Production'
           package: .
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_D325215D05ED4E9CB3E37FF320CB7215 }}
