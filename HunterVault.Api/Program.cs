@@ -16,6 +16,13 @@ builder.Services.AddCors(options =>
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
+    options.AddPolicy("AllowVercel", policy =>
+    {
+        policy.WithOrigins("https://hunter-vault-app.vercel.app")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
 });
 
 builder.Services.AddValidation();
@@ -52,7 +59,7 @@ builder.Services.AddHttpClient<IIgdbService, IgdbService>();
 
 var app = builder.Build();
 
-app.UseCors();
+app.UseCors("AllowVercel");
 
 if(app.Environment.IsDevelopment())
 {
