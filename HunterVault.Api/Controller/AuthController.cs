@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace HunterVault.Api.Controllers
 {
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     [ApiController]
     public class AuthController(IAuthService authService) : ControllerBase
     {
