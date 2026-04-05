@@ -1,7 +1,9 @@
+using HunterVault.Api.Dtos;
+
 namespace HunterVault.Api.Services;
 
 public interface IIgdbService
 {
-    Task<(string? CoverUrl, List<string> Genres)> GetGameDetailsAsync(string gameName);
     Task<List<IgdbGameResponse>> SearchGamesAsync(string query);
+    Task<IgdbGameDetailsDto?> GetFullGameDetailsByIdAsync(int igdbId);
 }

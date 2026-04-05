@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { GamesPage } from './pages/GamesPage';
 import { AuthPage } from './pages/AuthPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { GameDetailsPage } from './pages/GameDetailsPage';
 import { Loader2 } from 'lucide-react';
 
 const queryClient = new QueryClient({
@@ -31,6 +32,7 @@ function AppContent() {
   return (
     <Routes>
       <Route path="/profile/:username" element={<ProfilePage />} />
+      <Route path="/game/:id/:name" element={isAuthenticated ? <GameDetailsPage /> : <AuthPage />} />
       <Route path="*" element={isAuthenticated ? <GamesPage /> : <AuthPage />} />
     </Routes>
   );

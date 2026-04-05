@@ -22,6 +22,7 @@ export interface GameSummary {
   trophyPercentage?: number;
   coverUrl?: string;
   review?: string;
+  igdbId?: number;
 }
 
 export interface GameDetails {
@@ -35,6 +36,7 @@ export interface GameDetails {
   trophyPercentage?: number;
   coverUrl?: string;
   review?: string;
+  igdbId?: number;
 }
 
 export interface CreateGamePayload {
@@ -47,11 +49,17 @@ export interface CreateGamePayload {
   trophyPercentage?: number;
   coverUrl?: string;
   review?: string;
+  igdbId?: number;
 }
 
 export type UpdateGamePayload = CreateGamePayload;
 
 export interface IgdbSearchResult {
+  id: number;
   name: string;
   coverUrl?: string;
+}
+
+export interface Genre {
+  name: string;
 }

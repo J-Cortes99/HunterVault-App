@@ -17,11 +17,21 @@ public static class IgdbEndpoints
             var results = await igdbService.SearchGamesAsync(q);
             
             var mapped = results.Select(r => new {
+                id = r.Id,
                 name = r.Name,
                 coverUrl = r.Cover?.Url
             });
             
             return Results.Ok(mapped);
+        });
+
+        group.MapGet("/details/id/{id:int}", async (int id, IIgdbService igdbService) =>
+        {
+            var details = await igdbService.GetFullGameDetailsByIdAsync(id);
+            if (details == null)
+                return Results.NotFound($"No details found for IGDB ID {id}");
+
+            return Results.Ok(details);
         });
     }
 }

@@ -39,7 +39,8 @@ public static class GamesEndpoints
                     DifficultyRating: game.DifficultyRating,
                     TrophyPercentage: game.TrophyPercentage,
                     CoverUrl: game.CoverUrl,
-                    Review: game.Review
+                    Review: game.Review,
+                    IgdbId: game.IgdbId
                 ))
                 .AsNoTracking()
                 .ToListAsync());
@@ -65,7 +66,8 @@ public static class GamesEndpoints
                     DifficultyRating: game.DifficultyRating,
                     TrophyPercentage: game.TrophyPercentage,
                     CoverUrl: game.CoverUrl,
-                    Review: game.Review
+                    Review: game.Review,
+                    IgdbId: game.IgdbId
                 )
             );
         })
@@ -86,12 +88,25 @@ public static class GamesEndpoints
                 DifficultyRating = newGame.DifficultyRating,
                 TrophyPercentage = newGame.Status == GameStatus.Platinumed ? 100 : (newGame.Status is GameStatus.Backlog or GameStatus.Dropped ? null : newGame.TrophyPercentage),
                 Review = newGame.Review,
-                UserId = userId.Value
+                UserId = userId.Value,
+                IgdbId = newGame.IgdbId
             };
 
-            var details = await igdbService.GetGameDetailsAsync(game.Name);
-            game.CoverUrl = details.CoverUrl;
-            game.Genres = details.Genres;
+            IgdbGameDetailsDto? details = null;
+            if (game.IgdbId.HasValue)
+            {
+                details = await igdbService.GetFullGameDetailsByIdAsync(game.IgdbId.Value);
+            }
+
+            if (details != null)
+            {
+                game.CoverUrl = details.CoverUrl;
+                game.Genres = details.Genres;
+                if (game.IgdbId == null || game.IgdbId == 0)
+                {
+                    game.IgdbId = details.Id;
+                }
+            }
 
             dbContext.Games.Add(game);
             await dbContext.SaveChangesAsync();
@@ -106,7 +121,8 @@ public static class GamesEndpoints
                 DifficultyRating: game.DifficultyRating,
                 TrophyPercentage: game.TrophyPercentage,
                 CoverUrl: game.CoverUrl,
-                Review: game.Review
+                Review: game.Review,
+                IgdbId: game.IgdbId
             );
 
             return Results.CreatedAtRoute(GetGameEndpointName, new { id = gameDto.Id }, gameDto);
@@ -125,12 +141,26 @@ public static class GamesEndpoints
                 return Results.NotFound();
             }
 
-            if (existingGame.Name != updatedGame.Name || string.IsNullOrEmpty(existingGame.CoverUrl))
+            if (existingGame.Name != updatedGame.Name || existingGame.IgdbId != updatedGame.IgdbId || string.IsNullOrEmpty(existingGame.CoverUrl))
             {
                 existingGame.Name = updatedGame.Name;
-                var details = await igdbService.GetGameDetailsAsync(existingGame.Name);
-                existingGame.CoverUrl = details.CoverUrl;
-                existingGame.Genres = details.Genres;
+                existingGame.IgdbId = updatedGame.IgdbId;
+
+                IgdbGameDetailsDto? details = null;
+                if (existingGame.IgdbId.HasValue)
+                {
+                    details = await igdbService.GetFullGameDetailsByIdAsync(existingGame.IgdbId.Value);
+                }
+
+                if (details != null)
+                {
+                    existingGame.CoverUrl = details.CoverUrl;
+                    existingGame.Genres = details.Genres;
+                    if (existingGame.IgdbId == null || existingGame.IgdbId == 0)
+                    {
+                        existingGame.IgdbId = details.Id;
+                    }
+                }
             }
             
             existingGame.Platform = updatedGame.Platform;

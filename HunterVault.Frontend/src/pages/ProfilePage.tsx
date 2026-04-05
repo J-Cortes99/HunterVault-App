@@ -1,4 +1,4 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { profileApi } from '../api/profile';
 import {
@@ -53,6 +53,7 @@ const STATUS_STYLES: Record<GameStatus, { label: string; emoji: string; cls: str
 
 
 function ProfileGameCard({ game, index }: { game: GameSummary; index: number }) {
+  const navigate = useNavigate();
   const statusStyle = STATUS_STYLES[game.status] ?? STATUS_STYLES.Backlog;
   const isPlat = game.status === 'Platinumed';
 
@@ -105,7 +106,10 @@ function ProfileGameCard({ game, index }: { game: GameSummary; index: number }) 
         {/* Name & Platform */}
         <div className="mb-3">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="font-display text-lg font-bold leading-tight text-white transition-colors group-hover:text-amber-300">
+            <h3 
+              onClick={() => navigate(`/game/${game.igdbId}/${encodeURIComponent(game.name)}`)}
+              className="font-display text-lg font-bold leading-tight text-white transition-colors group-hover:text-amber-300 cursor-pointer hover:underline"
+            >
               {game.name}
             </h3>
             {game.platform && (

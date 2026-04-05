@@ -19,6 +19,7 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddValidation();
+builder.Services.AddMemoryCache();
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {

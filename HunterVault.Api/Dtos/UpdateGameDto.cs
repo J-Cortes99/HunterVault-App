@@ -10,5 +10,6 @@ public record UpdateGameDto(
     [Range(0, 9999)] int? HoursPlayed,
     [Range(1, 10)] int? DifficultyRating,
     [Range(0, 100)] int? TrophyPercentage,
-    [StringLength(2000)] string? Review
+    [StringLength(2000)] string? Review,
+    int? IgdbId
 );

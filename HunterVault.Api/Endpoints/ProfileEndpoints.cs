@@ -32,7 +32,8 @@ public static class ProfileEndpoints
                     DifficultyRating: g.DifficultyRating,
                     TrophyPercentage: g.TrophyPercentage,
                     CoverUrl: g.CoverUrl,
-                    Review: g.Review
+                    Review: g.Review,
+                    IgdbId: g.IgdbId
                 ))
                 .AsNoTracking()
                 .ToListAsync();

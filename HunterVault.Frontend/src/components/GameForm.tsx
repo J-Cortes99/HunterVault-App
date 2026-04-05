@@ -6,7 +6,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { igdbApi } from '../api/igdb';
 import { useDebounce } from '../hooks/useDebounce';
-import type { CreateGamePayload, GameDetails, GameStatus } from '../types';
+import type { CreateGamePayload, GameDetails, GameStatus, IgdbSearchResult } from '../types';
 import { GAME_STATUSES, PLATFORMS } from '../types';
 
 interface GameFormProps {
@@ -18,6 +18,7 @@ interface GameFormProps {
 
 export function GameForm({ initialData, isSubmitting, onSubmit, onCancel }: GameFormProps) {
   const [name, setName] = useState('');
+  const [igdbId, setIgdbId] = useState<number>();
   const [isFocused, setIsFocused] = useState(false);
   const debouncedName = useDebounce(name, 400);
 
@@ -46,6 +47,7 @@ export function GameForm({ initialData, isSubmitting, onSubmit, onCancel }: Game
       setRating(initialData.difficultyRating ?? null);
       setTrophyPercentage(initialData.trophyPercentage != null ? String(initialData.trophyPercentage) : '');
       setReview(initialData.review ?? '');
+      setIgdbId(initialData.igdbId);
     }
   }, [initialData]);
 
@@ -78,6 +80,7 @@ export function GameForm({ initialData, isSubmitting, onSubmit, onCancel }: Game
       difficultyRating: difficultyRating ?? undefined,
       trophyPercentage: (status === 'Playing' || status === 'Completed') && trophyPercentage ? parseInt(trophyPercentage) : undefined,
       review: review.trim() || undefined,
+      igdbId,
     });
   }
 
@@ -117,13 +120,14 @@ export function GameForm({ initialData, isSubmitting, onSubmit, onCancel }: Game
 
         {isFocused && suggestions.length > 0 && (
           <div className="absolute top-full left-0 right-0 mt-2 max-h-60 overflow-y-auto rounded-xl border border-white/10 bg-[#1e1e38] p-2 shadow-xl shadow-black/50 backdrop-blur-xl animate-fade-in z-50 scrollbar-thin">
-            {suggestions.map((game, idx) => (
+            {suggestions.map((game: IgdbSearchResult, idx: number) => (
               <button
                 key={`${game.name}-${idx}`}
                 type="button"
                 onMouseDown={(e) => {
                   e.preventDefault();
                   setName(game.name);
+                  setIgdbId(game.id);
                   setIsFocused(false);
                   setErrors(p => ({ ...p, name: '' }));
                 }}

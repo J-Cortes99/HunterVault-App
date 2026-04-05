@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { Clock, Edit2, Star, Trash2, Monitor } from 'lucide-react';
 import { FaWindows, FaPlaystation, FaXbox } from 'react-icons/fa6';
 import { BsNintendoSwitch } from 'react-icons/bs';
@@ -53,6 +54,7 @@ const PlatformIcon = ({ platform }: { platform: string }) => {
 
 
 export function GameCard({ game, onEdit, onDelete }: GameCardProps) {
+  const navigate = useNavigate();
   const statusStyle = STATUS_STYLES[game.status] ?? STATUS_STYLES.Backlog;
   const isPlat = game.status === 'Platinumed';
 
@@ -101,7 +103,10 @@ export function GameCard({ game, onEdit, onDelete }: GameCardProps) {
         {/* Name & Platform */}
         <div className="mb-3">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="font-display text-lg font-bold leading-tight text-white transition-colors group-hover:text-amber-300">
+            <h3 
+              onClick={() => navigate(`/game/${game.igdbId}/${encodeURIComponent(game.name)}`)}
+              className="font-display text-lg font-bold leading-tight text-white transition-colors group-hover:text-amber-300 cursor-pointer hover:underline"
+            >
               {game.name}
             </h3>
             {game.platform && (

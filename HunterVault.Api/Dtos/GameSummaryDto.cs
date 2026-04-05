@@ -12,5 +12,6 @@ public record GameSummaryDto(
     int? DifficultyRating,
     int? TrophyPercentage,
     string? CoverUrl,
-    string? Review
+    string? Review,
+    int? IgdbId
 );

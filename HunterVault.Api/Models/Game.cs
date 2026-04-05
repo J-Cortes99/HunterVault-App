@@ -15,4 +15,5 @@ public class Game
     public int? TrophyPercentage { get; set; }
     public string? CoverUrl { get; set; }
     public string? Review { get; set; }
+    public int? IgdbId { get; set; }
 }

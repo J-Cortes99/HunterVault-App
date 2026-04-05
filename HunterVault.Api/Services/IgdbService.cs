@@ -1,6 +1,8 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Caching.Memory;
+using HunterVault.Api.Dtos;
 
 namespace HunterVault.Api.Services;
 
@@ -8,7 +10,8 @@ public class IgdbService : IIgdbService
 {
     private readonly HttpClient _httpClient;
     private readonly IConfiguration _configuration;
-    private readonly ILogger<IgdbService> _logger; // 1. Añadido Logger
+    private readonly ILogger<IgdbService> _logger;
+    private readonly IMemoryCache _cache;
     
     private readonly SemaphoreSlim _tokenSemaphore = new(1, 1); // 2. Añadido Semáforo
     
@@ -18,12 +21,13 @@ public class IgdbService : IIgdbService
     private string? _accessToken;
     private DateTime _tokenExpiration;
 
-    public IgdbService(HttpClient httpClient, IConfiguration configuration, ILogger<IgdbService> logger)
+    public IgdbService(HttpClient httpClient, IConfiguration configuration, ILogger<IgdbService> logger, IMemoryCache cache)
     {
         _httpClient = httpClient;
         _httpClient.DefaultRequestHeaders.Add("User-Agent", "HunterVault-Api");
         _configuration = configuration;
         _logger = logger;
+        _cache = cache;
 
         // 3. Leemos la config una sola vez
         _clientId = _configuration["IgdbApi:ClientId"] ?? string.Empty;
@@ -73,84 +77,16 @@ public class IgdbService : IIgdbService
         }
     }
 
-    public async Task<(string? CoverUrl, List<string> Genres)> GetGameDetailsAsync(string gameName)
-    {
-        try 
-        {
-            await EnsureAccessTokenAsync();
-
-            if (string.IsNullOrEmpty(_accessToken))
-                return (null, []);
-
-            var mainGameCategories = new[] { 0, 8, 9, 10, 11 };
-            var safeGameName = gameName.Replace("\"", "\\\"");
-
-            // 1. FIRST ATTEMPT: EXACT SEARCH
-            using (var exactRequest = new HttpRequestMessage(HttpMethod.Post, "https://api.igdb.com/v4/games"))
-            {
-                exactRequest.Headers.Add("Client-ID", _clientId);
-                exactRequest.Headers.Add("Authorization", $"Bearer {_accessToken}");
-                exactRequest.Content = new StringContent($"where name = \"{safeGameName}\" & cover != null; fields name, cover.url, category, genres.name; limit 1;", Encoding.UTF8, "text/plain");
-
-                var exactResponse = await _httpClient.SendAsync(exactRequest);
-                if (exactResponse.IsSuccessStatusCode)
-                {
-                    var content = await exactResponse.Content.ReadAsStringAsync();
-                    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                    var exactGames = JsonSerializer.Deserialize<List<IgdbGameResponse>>(content, options);
-
-                    var bestExact = exactGames?.FirstOrDefault(g => mainGameCategories.Contains(g.Category));
-                    if (bestExact != null)
-                    {
-                        var cover = bestExact.Cover != null ? ProcessCoverUrl(bestExact.Cover.Url) : null;
-                        var genres = bestExact.Genres?.Select(g => g.Name).ToList() ?? [];
-                        return (cover, genres);
-                    }
-                }
-            }
-
-            // 2. SECOND ATTEMPT: FUZZY SEARCH
-            using (var searchRequest = new HttpRequestMessage(HttpMethod.Post, "https://api.igdb.com/v4/games"))
-            {
-                searchRequest.Headers.Add("Client-ID", _clientId);
-                searchRequest.Headers.Add("Authorization", $"Bearer {_accessToken}");
-                searchRequest.Content = new StringContent($"search \"{safeGameName}\"; fields name, cover.url, category, genres.name; limit 10;", Encoding.UTF8, "text/plain");
-
-                var searchResponse = await _httpClient.SendAsync(searchRequest);
-                if (searchResponse.IsSuccessStatusCode)
-                {
-                    var content = await searchResponse.Content.ReadAsStringAsync();
-                    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                    var igdbGames = JsonSerializer.Deserialize<List<IgdbGameResponse>>(content, options);
-
-                    if (igdbGames == null || igdbGames.Count == 0) return (null, []);
-
-                    var bestMatch = igdbGames
-                        .Select(g => new 
-                        { 
-                            Game = g, 
-                            Score = CalculateScore(g, gameName, mainGameCategories) 
-                        })
-                        .OrderByDescending(x => x.Score)
-                        .ThenBy(x => x.Game.Id) 
-                        .First();
-
-                    var cover = bestMatch.Game.Cover != null ? ProcessCoverUrl(bestMatch.Game.Cover.Url) : null;
-                    var genres = bestMatch.Game.Genres?.Select(g => g.Name).ToList() ?? [];
-                    return (cover, genres);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving details from IGDB for game: {GameName}", gameName);
-        }
-
-        return (null, []);
-    }
 
     public async Task<List<IgdbGameResponse>> SearchGamesAsync(string query)
     {
+        string cacheKey = $"igdb_search_{query.ToLower().Trim()}";
+        if (_cache.TryGetValue(cacheKey, out List<IgdbGameResponse>? cachedResults))
+        {
+            _logger.LogInformation("Serving search results from cache for: {Query}", query);
+            return cachedResults ?? new List<IgdbGameResponse>();
+        }
+
         var results = new List<IgdbGameResponse>();
         try 
         {
@@ -165,7 +101,7 @@ public class IgdbService : IIgdbService
             {
                 searchRequest.Headers.Add("Client-ID", _clientId);
                 searchRequest.Headers.Add("Authorization", $"Bearer {_accessToken}");
-                searchRequest.Content = new StringContent($"search \"{safeGameName}\"; fields name, cover.url, category; limit 15;", Encoding.UTF8, "text/plain");
+                searchRequest.Content = new StringContent($"search \"{safeGameName}\"; fields id, name, cover.url, category; limit 15;", Encoding.UTF8, "text/plain");
 
                 var searchResponse = await _httpClient.SendAsync(searchRequest);
                 if (searchResponse.IsSuccessStatusCode)
@@ -192,6 +128,8 @@ public class IgdbService : IIgdbService
                             .Select(grp => grp.First())
                             .Take(8)
                             .ToList();
+
+                        _cache.Set(cacheKey, results, TimeSpan.FromMinutes(15));
                     }
                 }
             }
@@ -212,23 +150,99 @@ public class IgdbService : IIgdbService
         return thumbUrl.Replace("t_thumb", "t_cover_big");
     }
 
-    private static int CalculateScore(IgdbGameResponse game, string searchName, int[] mainGameCategories)
+
+
+    private async Task PopulateTimeToBeatAsync(HunterVault.Api.Dtos.IgdbGameDetailsDto dto)
     {
-        if (game.Cover == null) return -1000;
+        try
+        {
+            using (var ttbRequest = new HttpRequestMessage(HttpMethod.Post, "https://api.igdb.com/v4/game_time_to_beats"))
+            {
+                ttbRequest.Headers.Add("Client-ID", _clientId);
+                ttbRequest.Headers.Add("Authorization", $"Bearer {_accessToken}");
+                ttbRequest.Content = new StringContent($"where game_id = {dto.Id}; fields *;", Encoding.UTF8, "text/plain");
 
-        int score = 0;
+                var ttbResponse = await _httpClient.SendAsync(ttbRequest);
+                if (ttbResponse.IsSuccessStatusCode)
+                {
+                    var content = await ttbResponse.Content.ReadAsStringAsync();
+                    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var ttbResults = JsonSerializer.Deserialize<List<IgdbTimeToBeatResponse>>(content, options);
+                    var ttb = ttbResults?.FirstOrDefault();
 
-        if (mainGameCategories.Contains(game.Category)) score += 100;
+                    if (ttb != null)
+                    {
+                        dto.Normally = ttb.Normally;
+                        dto.Hastily = ttb.Hastily;
+                        dto.Completely = ttb.Completely;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not fetch Time to Beat for game ID {GameId}", dto.Id);
+        }
+    }
 
-        var cleanSearch = searchName.Replace(":", "").Replace("-", "").Replace(" ", "").ToLower();
-        var cleanResult = game.Name.Replace(":", "").Replace("-", "").Replace(" ", "").ToLower();
+    public async Task<HunterVault.Api.Dtos.IgdbGameDetailsDto?> GetFullGameDetailsByIdAsync(int igdbId)
+    {
+        string cacheKey = $"igdb_details_{igdbId}";
+        if (_cache.TryGetValue(cacheKey, out HunterVault.Api.Dtos.IgdbGameDetailsDto? cachedDetails))
+        {
+            _logger.LogInformation("Misión cumplida: datos de juego {IgdbId} servidos desde el cache (RAM)", igdbId);
+            return cachedDetails;
+        }
 
-        if (cleanResult == cleanSearch) score += 50;
-        else if (cleanResult.Contains(cleanSearch)) score += 20;
+        try
+        {
+            await EnsureAccessTokenAsync();
+            if (string.IsNullOrEmpty(_accessToken)) return null;
 
-        score -= game.Name.Length;
+            _logger.LogInformation("Llamando a la API de IGDB por primera vez para el juego {IgdbId}", igdbId);
 
-        return score;
+            using (var request = new HttpRequestMessage(HttpMethod.Post, "https://api.igdb.com/v4/games"))
+            {
+                request.Headers.Add("Client-ID", _clientId);
+                request.Headers.Add("Authorization", $"Bearer {_accessToken}");
+                request.Content = new StringContent($"where id = {igdbId}; fields id, name, summary, cover.url, genres.name, platforms.name, first_release_date, rating, screenshots.url, videos.video_id, category; limit 1;", Encoding.UTF8, "text/plain");
+
+                var response = await _httpClient.SendAsync(request);
+                if (response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var games = JsonSerializer.Deserialize<List<IgdbGameResponse>>(content, options);
+                    var game = games?.FirstOrDefault();
+
+                    if (game != null)
+                    {
+                        var dto = new HunterVault.Api.Dtos.IgdbGameDetailsDto
+                        {
+                            Id = game.Id,
+                            Name = game.Name,
+                            Summary = game.Summary,
+                            CoverUrl = game.Cover != null ? ProcessCoverUrl(game.Cover.Url).Replace("t_cover_big", "t_1080p") : null,
+                            Rating = game.Rating,
+                            FirstReleaseDate = game.FirstReleaseDate,
+                            Genres = game.Genres?.Select(g => g.Name).ToList() ?? new(),
+                            Platforms = game.Platforms?.Select(p => p.Name).ToList() ?? new(),
+                            Screenshots = game.Screenshots?.Select(s => ProcessCoverUrl(s.Url).Replace("t_cover_big", "t_1080p")).ToList() ?? new(),
+                            TrailerYoutubeId = game.Videos?.FirstOrDefault()?.VideoId
+                        };
+                        await PopulateTimeToBeatAsync(dto);
+
+                        _cache.Set(cacheKey, dto, TimeSpan.FromHours(24));
+                        return dto;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving full details by ID {IgdbId}", igdbId);
+        }
+        return null;
     }
 }
 
@@ -257,6 +271,24 @@ public class IgdbGameResponse
 
     [JsonPropertyName("genres")]
     public List<IgdbGenreResponse>? Genres { get; set; }
+
+    [JsonPropertyName("summary")]
+    public string Summary { get; set; } = string.Empty;
+
+    [JsonPropertyName("rating")]
+    public double? Rating { get; set; }
+
+    [JsonPropertyName("first_release_date")]
+    public long? FirstReleaseDate { get; set; }
+
+    [JsonPropertyName("platforms")]
+    public List<IgdbPlatformResponse>? Platforms { get; set; }
+
+    [JsonPropertyName("screenshots")]
+    public List<IgdbScreenshotResponse>? Screenshots { get; set; }
+
+    [JsonPropertyName("videos")]
+    public List<IgdbVideoResponse>? Videos { get; set; }
 }
 
 public class IgdbGenreResponse
@@ -272,4 +304,40 @@ public class IgdbCoverResponse
 
     [JsonPropertyName("url")]
     public string Url { get; set; } = string.Empty;
+}
+
+public class IgdbPlatformResponse
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+}
+
+public class IgdbScreenshotResponse
+{
+    [JsonPropertyName("url")]
+    public string Url { get; set; } = string.Empty;
+}
+
+public class IgdbVideoResponse
+{
+    [JsonPropertyName("video_id")]
+    public string VideoId { get; set; } = string.Empty;
+    
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+}
+
+public class IgdbTimeToBeatResponse
+{
+    [JsonPropertyName("game_id")]
+    public int GameId { get; set; }
+    
+    [JsonPropertyName("hastily")]
+    public int? Hastily { get; set; }
+    
+    [JsonPropertyName("normally")]
+    public int? Normally { get; set; }
+    
+    [JsonPropertyName("completely")]
+    public int? Completely { get; set; }
 }
