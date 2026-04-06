@@ -18,7 +18,7 @@ builder.Services.AddCors(options =>
     });
     options.AddPolicy("AllowVercel", policy =>
     {
-        policy.WithOrigins("https://hunter-vault-app.vercel.app")
+        policy.WithOrigins("https://huntervault-app.vercel.app")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
