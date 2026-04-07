@@ -59,7 +59,14 @@ builder.Services.AddHttpClient<IIgdbService, IgdbService>();
 
 var app = builder.Build();
 
-app.UseCors("AllowVercel");
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors();
+}
+else
+{
+    app.UseCors("AllowVercel");
+}
 
 if(app.Environment.IsDevelopment())
 {

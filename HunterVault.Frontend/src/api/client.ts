@@ -1,6 +1,6 @@
 import axios from 'axios';
 
 export const apiClient = axios.create({
-  baseURL: 'https://huntervault-api-dvarbrfud9g2c9b6.spaincentral-01.azurewebsites.net/api',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5147/api',
   headers: { 'Content-Type': 'application/json' },
 });
