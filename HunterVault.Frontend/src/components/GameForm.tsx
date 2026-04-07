@@ -198,19 +198,25 @@ export function GameForm({ initialData, isSubmitting, onSubmit, onCancel }: Game
         {/* Trophy Percentage (Visible solo si Playing o Completed) */}
         {(status === 'Playing' || status === 'Completed') && (
           <div className="mt-4 animate-fade-in">
-            <label className={labelCls}>
-              <span className="flex items-center gap-1.5 mb-1.5">
-                <Trophy size={14} className="text-amber-400" /> Progreso de Trofeos (%)
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-slate-300 flex items-center gap-1.5">
+                <Trophy size={14} className="text-amber-400" /> Progreso de Trofeos
+              </label>
+              <span className="text-sm font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20">
+                {trophyPercentage || 0}%
               </span>
-            </label>
-            <input
-              type="number"
-              value={trophyPercentage}
-              onChange={e => { setTrophyPercentage(e.target.value); setErrors(p => ({ ...p, trophy: '' })); }}
-              placeholder="ej. 85"
-              min={0} max={100} step={1}
-              className={inputCls(errors.trophy)}
-            />
+            </div>
+            <div className="relative flex items-center group">
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                value={trophyPercentage || 0}
+                onChange={e => { setTrophyPercentage(e.target.value); setErrors(p => ({ ...p, trophy: '' })); }}
+                className="h-2 w-full appearance-none rounded-lg bg-white/10 accent-amber-500 cursor-pointer transition-all hover:bg-white/15 focus:outline-none"
+              />
+            </div>
             {errors.trophy && <p className="mt-1 text-xs text-red-400">{errors.trophy}</p>}
           </div>
         )}

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Search, Star, Gamepad2, Clock, ListFilter, ChevronDown } from 'lucide-react';
+import { Search, Trophy, Gamepad2, Clock, ListFilter, ChevronDown, Zap } from 'lucide-react';
 import type { GameSummary, GameDetails, CreateGamePayload, GameStatus, UpdateProfilePayload } from '../types';
 import { GAME_STATUSES } from '../types';
 import { gamesApi } from '../api/games';
@@ -14,6 +14,8 @@ import { EmptyState } from '../components/EmptyState';
 import { GameModal } from '../components/GameModal';
 import { DeleteModal } from '../components/DeleteModal';
 import { ProfileEditModal } from '../components/ProfileEditModal';
+import { XpInfoModal } from '../components/XpInfoModal';
+import { calculateGameXp, playXpGainSound, playLevelUpSound } from '../utils/xp';
 
 type ModalState =
   | { type: 'none' }
@@ -48,6 +50,7 @@ export function GamesPage() {
   const { user } = useAuth();
   const [modal, setModal]                     = useState<ModalState>({ type: 'none' });
   const [isProfileEditModalOpen, setIsProfileEditModalOpen] = useState(false);
+  const [isXpInfoModalOpen, setIsXpInfoModalOpen] = useState(false);
   const [sortOption, setSortOption]           = useState<SortOption>('recent');
   const [search, setSearch]                   = useState('');
   const [statusFilter, setStatus]             = useState<StatusFilter>('All');
@@ -67,8 +70,44 @@ export function GamesPage() {
   /* ─── Mutations ─── */
   const createMut = useMutation({
     mutationFn: (p: CreateGamePayload) => gamesApi.create(p),
-    onSuccess: () => {
+    onSuccess: (_, payload) => {
       qc.invalidateQueries({ queryKey: ['games'] });
+      qc.invalidateQueries({ queryKey: ['profile', user?.username] });
+      
+      // Calculate XP gain
+      const gainedXp = calculateGameXp(payload);
+      if (gainedXp > 0) {
+        const isLevelUp = profile && (profile.totalXp + gainedXp >= profile.nextLevelXp);
+        
+        if (isLevelUp) {
+          playLevelUpSound();
+          toast.success(`¡NIVEL ${profile.level + 1} ALCANZADO! 🎊`, {
+            duration: 5000,
+            style: {
+              background: 'linear-gradient(to right, #b45309, #d97706)',
+              color: '#fff',
+              fontWeight: 'bold',
+              fontSize: '1.1rem',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)'
+            }
+          });
+        } else {
+          playXpGainSound();
+        }
+
+        toast.success(`+${gainedXp.toLocaleString()} XP`, {
+          icon: '✨',
+          duration: 3000,
+          style: {
+            background: '#1e1e38',
+            color: '#fbbf24',
+            border: '1px solid rgba(251, 191, 36, 0.2)',
+            fontWeight: 'bold'
+          }
+        });
+      }
+
       setModal({ type: 'none' });
       toast.success('¡Hunt registrado! 🏆');
     },
@@ -78,8 +117,49 @@ export function GamesPage() {
   const updateMut = useMutation({
     mutationFn: ({ id, payload }: { id: number; payload: CreateGamePayload }) =>
       gamesApi.update(id, payload),
-    onSuccess: () => {
+    onSuccess: (_, { payload }) => {
       qc.invalidateQueries({ queryKey: ['games'] });
+      qc.invalidateQueries({ queryKey: ['profile', user?.username] });
+      
+      // Calculate XP gain (difference)
+      if (modal.type === 'edit') {
+        const oldXp = calculateGameXp(modal.gameDetails);
+        const newXp = calculateGameXp(payload);
+        const diff = newXp - oldXp;
+
+        if (diff > 0) {
+          const isLevelUp = profile && (profile.totalXp + diff >= profile.nextLevelXp);
+
+          if (isLevelUp) {
+            playLevelUpSound();
+            toast.success(`¡NIVEL ${profile.level + 1} ALCANZADO! 🎊`, {
+              duration: 5000,
+              style: {
+                background: 'linear-gradient(to right, #b45309, #d97706)',
+                color: '#fff',
+                fontWeight: 'bold',
+                fontSize: '1.1rem',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)'
+              }
+            });
+          } else {
+            playXpGainSound();
+          }
+
+          toast.success(`+${diff.toLocaleString()} XP`, {
+            icon: '✨',
+            duration: 3000,
+            style: {
+              background: '#1e1e38',
+              color: '#fbbf24',
+              border: '1px solid rgba(251, 191, 36, 0.2)',
+              fontWeight: 'bold'
+            }
+          });
+        }
+      }
+
       setModal({ type: 'none' });
       toast.success('¡Juego actualizado!');
     },
@@ -90,6 +170,7 @@ export function GamesPage() {
     mutationFn: (id: number) => gamesApi.delete(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['games'] });
+      qc.invalidateQueries({ queryKey: ['profile', user?.username] });
       setModal({ type: 'none' });
       toast.success('Juego eliminado.');
     },
@@ -151,11 +232,6 @@ export function GamesPage() {
     return result;
   }, [games, statusFilter, search, sortOption]);
 
-  const platinumedCount = games.filter(g => g.status === 'Platinumed').length;
-  const ratedGames      = games.filter(g => g.difficultyRating != null);
-  const avgRating       = ratedGames.length
-    ? (ratedGames.reduce((s, g) => s + (g.difficultyRating ?? 0), 0) / ratedGames.length).toFixed(1)
-    : '—';
   const totalHours      = games.reduce((acc, g) => acc + (g.hoursPlayed || 0), 0);
 
   /* ─── Status tab counts ─── */
@@ -178,33 +254,47 @@ export function GamesPage() {
       <main className="mx-auto max-w-7xl px-6 py-8">
 
         {/* Stats bar */}
-        <div className="mb-8 grid grid-cols-3 gap-4">
+        <div className="mb-8 grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'Juegos',         value: games.length, icon: Gamepad2, color: 'text-violet-400' },
-            { label: 'Horas Totales',   value: `${totalHours}h`, icon: Clock,    color: 'text-emerald-400' },
-            { label: 'Dificultad Media', value: avgRating,    icon: Star,     color: 'text-amber-400' },
+            { label: 'Juegos', value: games.length, icon: Gamepad2, color: 'text-violet-400' },
+            { 
+              label: 'Nivel Actual', 
+              value: profile?.level ?? 1, 
+              icon: Trophy, 
+              color: 'text-amber-400',
+              extra: (
+                <button 
+                  onClick={() => setIsXpInfoModalOpen(true)}
+                  className="ml-1 rounded-full p-0.5 hover:bg-white/10 transition-colors text-slate-500 hover:text-amber-500"
+                  title="Ver sistema de XP"
+                >
+                  <Search size={12} />
+                </button>
+              )
+            },
+            { 
+              label: 'XP Total', 
+              value: profile?.totalXp?.toLocaleString() ?? 0, 
+              icon: Zap, 
+              color: 'text-yellow-400' 
+            },
+            { label: 'Horas Totales', value: `${totalHours}h`, icon: Clock, color: 'text-emerald-400' },
           ].map(stat => (
-            <div key={stat.label} className="glass flex items-center gap-4 rounded-2xl px-5 py-4 animate-fade-in">
+            <div key={stat.label} className="glass flex items-center gap-4 rounded-2xl px-5 py-4 animate-fade-in transition-transform hover:scale-[1.02]">
               <div className={`rounded-xl bg-white/5 p-2.5 ${stat.color}`}>
                 <stat.icon size={18} />
               </div>
               <div>
-                <p className="text-xl font-bold text-white">{stat.value}</p>
+                <div className="flex items-center">
+                  <p className="text-xl font-bold text-white">{stat.value}</p>
+                  {stat.extra}
+                </div>
                 <p className="text-xs text-slate-500">{stat.label}</p>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Platinum banner */}
-        {platinumedCount > 0 && (
-          <div className="mb-6 flex items-center gap-3 rounded-2xl border border-amber-500/20 bg-gradient-to-r from-amber-500/10 to-yellow-400/5 px-5 py-3 animate-fade-in">
-            <span className="text-2xl">🏆</span>
-            <p className="text-sm text-amber-300">
-              <span className="font-bold">{platinumedCount}</span> juego{platinumedCount !== 1 ? 's' : ''} platinado{platinumedCount !== 1 ? 's' : ''} — ¡Cazador de trofeos de élite!
-            </p>
-          </div>
-        )}
 
         {/* Status filter tabs */}
         <div className="mb-6 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
@@ -329,6 +419,11 @@ export function GamesPage() {
           }}
         />
       )}
+
+      <XpInfoModal
+        isOpen={isXpInfoModalOpen}
+        onClose={() => setIsXpInfoModalOpen(false)}
+      />
     </div>
   );
 }
