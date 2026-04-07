@@ -96,6 +96,17 @@ body {
   border-radius: 6px;
 }
 
+@keyframes platinum-shine {
+  0% { transform: translateX(-150%) skewX(-20deg); opacity: 0; }
+  20% { opacity: 0.8; }
+  50% { transform: translateX(150%) skewX(-20deg); opacity: 0; }
+  100% { transform: translateX(150%) skewX(-20deg); opacity: 0; }
+}
+
+.animate-platinum-shine {
+  animation: platinum-shine 4s ease-in-out infinite;
+}
+
 /* Glass card */
 .glass {
   background: rgba(30, 41, 59, 0.75); /* slate-800 */

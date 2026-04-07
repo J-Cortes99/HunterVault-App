@@ -10,4 +10,7 @@ public class User
     public string? RefreshToken { get; set; }
     public DateTime? RefreshTokenExpiryTime { get; set; }
     public ICollection<Game> Games { get; set; } = new List<Game>();
+    public string? Bio { get; set; }
+    public string? AvatarUrl { get; set; }
+    public string? BannerUrl { get; set; }
 }

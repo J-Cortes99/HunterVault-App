@@ -2,15 +2,18 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Search, Star, Gamepad2, Clock, ListFilter, ChevronDown } from 'lucide-react';
-import type { GameSummary, GameDetails, CreateGamePayload, GameStatus } from '../types';
+import type { GameSummary, GameDetails, CreateGamePayload, GameStatus, UpdateProfilePayload } from '../types';
 import { GAME_STATUSES } from '../types';
 import { gamesApi } from '../api/games';
+import { profileApi } from '../api/profile';
+import { useAuth } from '../context/AuthContext';
 import { Header } from '../components/Header';
 import { GameCard } from '../components/GameCard';
 import { SkeletonCard } from '../components/SkeletonCard';
 import { EmptyState } from '../components/EmptyState';
 import { GameModal } from '../components/GameModal';
 import { DeleteModal } from '../components/DeleteModal';
+import { ProfileEditModal } from '../components/ProfileEditModal';
 
 type ModalState =
   | { type: 'none' }
@@ -42,15 +45,23 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
 
 export function GamesPage() {
   const qc = useQueryClient();
-  const [modal, setModal]           = useState<ModalState>({ type: 'none' });
-  const [sortOption, setSortOption] = useState<SortOption>('recent');
-  const [search, setSearch]         = useState('');
-  const [statusFilter, setStatus]   = useState<StatusFilter>('All');
+  const { user } = useAuth();
+  const [modal, setModal]                     = useState<ModalState>({ type: 'none' });
+  const [isProfileEditModalOpen, setIsProfileEditModalOpen] = useState(false);
+  const [sortOption, setSortOption]           = useState<SortOption>('recent');
+  const [search, setSearch]                   = useState('');
+  const [statusFilter, setStatus]             = useState<StatusFilter>('All');
 
   /* ─── Queries ─── */
   const { data: games = [], isLoading: gamesLoading } = useQuery({
     queryKey: ['games'],
     queryFn: gamesApi.getAll,
+  });
+
+  const { data: profile } = useQuery({
+    queryKey: ['profile', user?.username],
+    queryFn: () => profileApi.getByUsername(user!.username),
+    enabled: !!user?.username,
   });
 
   /* ─── Mutations ─── */
@@ -83,6 +94,15 @@ export function GamesPage() {
       toast.success('Juego eliminado.');
     },
     onError: () => toast.error('Error al eliminar el juego.'),
+  });
+
+  const updateProfileMut = useMutation({
+    mutationFn: (p: UpdateProfilePayload) => profileApi.updateProfile(p),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['profile', user?.username] });
+      toast.success('¡Perfil actualizado! ✨');
+    },
+    onError: () => toast.error('Error al actualizar el perfil.'),
   });
 
   /* ─── Edit handler: fetch details first ─── */
@@ -150,7 +170,10 @@ export function GamesPage() {
   /* ─── Render ─── */
   return (
     <div className="min-h-screen bg-surface-900">
-      <Header onAddGame={() => setModal({ type: 'create' })} />
+      <Header 
+        onAddGame={() => setModal({ type: 'create' })} 
+        onEditProfile={() => setIsProfileEditModalOpen(true)}
+      />
 
       <main className="mx-auto max-w-7xl px-6 py-8">
 
@@ -293,6 +316,17 @@ export function GamesPage() {
           isDeleting={deleteMut.isPending}
           onConfirm={() => deleteMut.mutate(modal.game.id)}
           onCancel={() => setModal({ type: 'none' })}
+        />
+      )}
+
+      {profile && (
+        <ProfileEditModal
+          isOpen={isProfileEditModalOpen}
+          profile={profile}
+          onClose={() => setIsProfileEditModalOpen(false)}
+          onSave={async p => {
+            await updateProfileMut.mutateAsync(p);
+          }}
         />
       )}
     </div>

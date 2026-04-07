@@ -75,8 +75,18 @@ export function GameCard({ game, onEdit, onDelete }: GameCardProps) {
   const isPlat = game.status === 'Platinumed';
 
   return (
-    <article className={`glass group relative flex flex-col overflow-hidden rounded-2xl transition-all duration-300 hover:-translate-y-1 hover:shadow-xl animate-fade-in ${isPlat ? 'hover:border-amber-400/40 hover:shadow-amber-500/15' : 'hover:border-amber-500/20 hover:shadow-amber-500/10'
+    <article className={`glass group relative flex flex-col overflow-hidden rounded-2xl transition-all duration-500 hover:-translate-y-2 animate-fade-in ${
+      isPlat 
+        ? 'border-amber-400/60 bg-gradient-to-br from-amber-600/10 via-surface-950/80 to-amber-900/05 shadow-[0_0_30px_rgba(251,191,36,0.1)] ring-1 ring-amber-400/20 hover:border-amber-400 hover:shadow-[0_0_40px_rgba(251,191,36,0.2)]' 
+        : 'border-white/5 hover:border-amber-500/30 hover:shadow-amber-500/10'
       }`}>
+      {/* Platinum premium shine effect */}
+      {isPlat && (
+        <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/10 via-transparent to-amber-400/5 opacity-40" />
+          <div className="absolute inset-y-0 w-48 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-[-20deg] animate-platinum-shine" />
+        </div>
+      )}
       {/* Top Section: Cover Image */}
       <div className="relative aspect-[3/4] w-full overflow-hidden bg-surface-900">
         {game.coverUrl ? (
@@ -110,11 +120,7 @@ export function GameCard({ game, onEdit, onDelete }: GameCardProps) {
       </div>
 
       {/* Bottom Section: Details */}
-      <div className="relative flex flex-col p-5">
-        {/* Platinum shimmer overlay */}
-        {isPlat && (
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-amber-500/5 to-yellow-400/5" />
-        )}
+      <div className="relative flex flex-col p-5 z-10">
 
         {/* Name & Platform */}
         <div className="mb-3">

@@ -1,20 +1,20 @@
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { profileApi } from '../api/profile';
 import {
-  Trophy, ArrowLeft, Award, User,
-  Loader2, SearchX, Star, Clock, Gamepad2
+  Trophy, ArrowLeft, Award,
+  Loader2, SearchX, Star, Clock, Gamepad2,
+  User as UserIcon
 } from 'lucide-react';
-import type { GameSummary, GameStatus } from '../types';
-import { GAME_STATUSES } from '../types';
+import type { GameSummary, GameStatus, UserProfile } from '../types';
 import { FaWindows, FaPlaystation, FaXbox } from 'react-icons/fa6';
 import { BsNintendoSwitch } from 'react-icons/bs';
 
 const GENRE_GRADIENTS: Record<string, string> = {
   'Action': 'from-red-500/20 to-orange-500/20 text-orange-300 border-orange-500/20',
   'Adventure': 'from-green-500/20 to-teal-500/20 text-teal-300 border-teal-500/20',
-  'RPG': 'from-purple-500/20 to-violet-500/20 text-violet-300 border-violet-500/20',
-  'Role-playing (RPG)': 'from-purple-500/20 to-violet-500/20 text-violet-300 border-violet-500/20',
+  'RPG': 'from-purple-500/20 to-violet-500/20 text-violet-300 border-purple-500/20',
+  'Role-playing (RPG)': 'from-purple-500/20 to-violet-500/20 text-violet-300 border-purple-500/20',
   'Strategy': 'from-blue-500/20 to-cyan-500/20 text-cyan-300 border-cyan-500/20',
   'Shooter': 'from-orange-500/20 to-red-600/20 text-orange-400 border-red-500/20',
   'Music': 'from-pink-500/20 to-rose-400/20 text-pink-300 border-rose-500/20',
@@ -66,8 +66,6 @@ const STATUS_STYLES: Record<GameStatus, { label: string; emoji: string; cls: str
   Dropped:    { label: 'Abandonado', emoji: '❌', cls: 'text-red-300 bg-red-500/10 border-red-500/20' },
 };
 
-
-
 function ProfileGameCard({ game, index }: { game: GameSummary; index: number }) {
   const navigate = useNavigate();
   const statusStyle = STATUS_STYLES[game.status] ?? STATUS_STYLES.Backlog;
@@ -80,7 +78,6 @@ function ProfileGameCard({ game, index }: { game: GameSummary; index: number }) 
       }`}
       style={{ animationDelay: `${index * 50}ms` }}
     >
-      {/* Top Section: Cover Image */}
       <div className="relative aspect-[3/4] w-full overflow-hidden bg-surface-900">
         {game.coverUrl ? (
           <img 
@@ -94,7 +91,6 @@ function ProfileGameCard({ game, index }: { game: GameSummary; index: number }) 
           </div>
         )}
         
-        {/* Floating Status Badge */}
         <div className="absolute top-3 left-3 z-10">
           <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-bold backdrop-blur-md ${statusStyle.cls.replace('bg-', 'bg-').replace('/10', '/40')}`}>
             <span className="leading-none">{statusStyle.emoji}</span>
@@ -102,7 +98,6 @@ function ProfileGameCard({ game, index }: { game: GameSummary; index: number }) 
           </span>
         </div>
 
-        {/* Genre Badges (Bottom Left) */}
         <div className="absolute bottom-3 left-3 z-10 flex gap-1 flex-wrap w-full pr-4">
           {game.genres && game.genres.slice(0, 3).map((g, idx) => (
             <span key={idx} className={`inline-flex items-center gap-1.5 rounded-lg border bg-surface-950/40 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${GENRE_GRADIENTS[g] ?? DEFAULT_BADGE}`}>
@@ -112,14 +107,11 @@ function ProfileGameCard({ game, index }: { game: GameSummary; index: number }) 
         </div>
       </div>
 
-      {/* Bottom Section: Details */}
       <div className="relative flex flex-col p-5">
-        {/* Platinum shimmer overlay */}
         {isPlat && (
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-amber-500/5 to-yellow-400/5" />
         )}
 
-        {/* Name & Platform */}
         <div className="mb-3">
           <div className="flex items-start justify-between gap-2">
             <h3 
@@ -136,7 +128,6 @@ function ProfileGameCard({ game, index }: { game: GameSummary; index: number }) 
           </div>
         </div>
 
-        {/* Rating & Stats Grid */}
         <div className="mb-4 grid grid-cols-2 gap-4 border-y border-white/5 py-3">
           {game.difficultyRating != null && (
             <div className="flex flex-col gap-1">
@@ -158,7 +149,6 @@ function ProfileGameCard({ game, index }: { game: GameSummary; index: number }) 
           )}
         </div>
 
-        {/* Review */}
         {game.review && (
           <div className="mb-4">
             <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Valoración</span>
@@ -168,7 +158,6 @@ function ProfileGameCard({ game, index }: { game: GameSummary; index: number }) 
           </div>
         )}
 
-        {/* Trophy Progress */}
         {game.trophyPercentage != null && (
           <div className="mb-1">
             <div className="mb-2 flex justify-between text-[10px] font-bold uppercase tracking-wider">
@@ -189,6 +178,8 @@ function ProfileGameCard({ game, index }: { game: GameSummary; index: number }) 
     </article>
   );
 }
+
+import { useNavigate } from 'react-router-dom';
 
 export function ProfilePage() {
   const { username } = useParams<{ username: string }>();
@@ -228,31 +219,37 @@ export function ProfilePage() {
     );
   }
 
-  // Compute stats
+  const currentProfile = profile as UserProfile;
+
   const genreCounts: Record<string, number> = {};
-  const platformCounts: Record<string, number> = {};
-  profile.games.forEach((g: GameSummary) => {
+  currentProfile.games.forEach((g: GameSummary) => {
     g.genres?.forEach(genre => {
       genreCounts[genre] = (genreCounts[genre] || 0) + 1;
     });
-    if (g.platform) platformCounts[g.platform] = (platformCounts[g.platform] || 0) + 1;
   });
-  const topGenre       = Object.entries(genreCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '—';
-  const platinumedCount = profile.games.filter((g: GameSummary) => g.status === 'Platinumed').length;
-  const ratedGames     = profile.games.filter((g: GameSummary) => g.difficultyRating != null);
-  const avgRating      = ratedGames.length
+  const topGenre = Object.entries(genreCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '—';
+  const platinumedCount = currentProfile.games.filter((g: GameSummary) => g.status === 'Platinumed').length;
+  const ratedGames = currentProfile.games.filter((g: GameSummary) => g.difficultyRating != null);
+  const avgRating = ratedGames.length
     ? (ratedGames.reduce((s: number, g: GameSummary) => s + (g.difficultyRating ?? 0), 0) / ratedGames.length).toFixed(1)
     : '—';
 
-  // Status breakdown for summary bar
-  const statusCounts = GAME_STATUSES.map(s => ({
-    ...s,
-    count: profile.games.filter((g: GameSummary) => g.status === s.value).length,
-  })).filter(s => s.count > 0);
+  const getRankInfo = (level: number) => {
+    if (level >= 100) return { name: 'Master Hunter', color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/30', glow: 'shadow-red-500/20' };
+    if (level >= 40) return { name: 'Platinum', color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/30', glow: 'shadow-cyan-500/20' };
+    if (level >= 20) return { name: 'Oro', color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30', glow: 'shadow-amber-500/20' };
+    if (level >= 10) return { name: 'Plata', color: 'text-slate-300', bg: 'bg-slate-400/10', border: 'border-slate-400/30', glow: 'shadow-slate-400/20' };
+    return { name: 'Bronce', color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/30', glow: 'shadow-orange-500/20' };
+  };
+
+  const rank = getRankInfo(currentProfile.level);
+  const prevLevelXp = Math.pow(currentProfile.level, 2) * 100;
+  const xpInCurrentLevel = currentProfile.totalXp - prevLevelXp;
+  const xpNeededForNextLevel = currentProfile.nextLevelXp - prevLevelXp;
+  const progressPercent = Math.min(100, Math.max(0, (xpInCurrentLevel / xpNeededForNextLevel) * 100));
 
   return (
     <div className="min-h-screen bg-surface-900">
-      {/* Header */}
       <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-surface-950/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <Link to="/" className="flex items-center gap-3 group">
@@ -263,79 +260,108 @@ export function ProfilePage() {
               Hunter<span className="bg-gradient-to-r from-amber-400 to-yellow-400 bg-clip-text text-transparent">Vault</span>
             </span>
           </Link>
-          <Link
-            to="/"
-            className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300 transition-all hover:border-amber-500/30 hover:bg-amber-500/10 hover:text-white"
-          >
-            <ArrowLeft size={16} />
-            Volver
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              to="/"
+              className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300 transition-all hover:border-amber-500/30 hover:bg-amber-500/10 hover:text-white"
+            >
+              <ArrowLeft size={16} />
+              Volver
+            </Link>
+          </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-7xl px-6 py-8">
-        {/* Profile hero */}
-        <div className="glass relative overflow-hidden rounded-3xl p-8 mb-8 animate-fade-in">
-          <div className="absolute inset-0 bg-gradient-to-br from-amber-600/10 via-transparent to-yellow-600/10 pointer-events-none" />
-          <div className="absolute -top-20 -right-20 h-60 w-60 rounded-full bg-amber-600/10 blur-3xl pointer-events-none" />
-
-          <div className="relative flex flex-col items-center gap-5 sm:flex-row sm:items-start">
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-yellow-600 shadow-xl shadow-amber-500/30">
-              <User size={36} className="text-white" />
-            </div>
-            <div className="text-center sm:text-left">
-              <h1 className="font-display text-3xl font-bold text-white mb-1">
-                {profile.username}
-              </h1>
-              <p className="text-slate-400 text-sm">Perfil de Cazador de Trofeos</p>
-            </div>
-          </div>
-
-          {/* Stats */}
-          <div className="relative mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {[
-              { label: 'Juegos',      value: profile.totalGames, icon: Gamepad2, color: 'text-violet-400' },
-              { label: 'Género Fav',  value: topGenre,            icon: Award,  color: 'text-violet-400' },
-              { label: 'Platinados',  value: platinumedCount,     icon: Trophy, color: 'text-yellow-400' },
-              { label: 'Dificultad Media',  value: avgRating,           icon: Star,   color: 'text-amber-400' },
-            ].map(stat => (
-              <div key={stat.label} className="flex flex-col items-center gap-1 rounded-2xl bg-white/5 border border-white/5 px-4 py-4">
-                <stat.icon size={18} className={stat.color} />
-                <span className="font-display text-lg font-bold text-white">{stat.value}</span>
-                <span className="text-xs text-slate-500">{stat.label}</span>
+        <div className="glass relative overflow-hidden rounded-3xl mb-8 animate-fade-in group/hero">
+          <div className="absolute inset-0 h-48 w-full bg-surface-950 group-hover/hero:opacity-90 transition-opacity">
+            {currentProfile.bannerUrl ? (
+              <div className="relative h-full w-full">
+                <img 
+                  src={currentProfile.bannerUrl} 
+                  alt="Banner" 
+                  className="h-full w-full object-cover" 
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-surface-950 via-surface-950/40 to-transparent" />
               </div>
-            ))}
+            ) : (
+              <div className="h-full w-full bg-gradient-to-br from-amber-600/20 via-transparent to-yellow-600/10" />
+            )}
+          </div>
+          
+          <div className="relative pt-32 p-8 flex flex-col items-center sm:items-end sm:flex-row gap-8">
+            <div className="relative group/avatar shrink-0">
+              <div className={`flex h-32 w-32 items-center justify-center rounded-3xl border-4 border-surface-900 overflow-hidden bg-surface-800 shadow-2xl transition-transform duration-500 group-hover/avatar:scale-105`}>
+                {currentProfile.avatarUrl ? (
+                  <img src={currentProfile.avatarUrl} alt={currentProfile.username} className="h-full w-full object-cover" />
+                ) : (
+                  <UserIcon size={64} className="text-surface-600" />
+                )}
+              </div>
+              <div className={`absolute -bottom-2 -right-2 rounded-xl border-2 border-surface-900 ${rank.bg.replace('/10', '/100')} ${rank.color} px-3 py-1 text-xs font-black shadow-xl`}>
+                LVL {currentProfile.level}
+              </div>
+            </div>
+
+            <div className="flex-1 text-center sm:text-left">
+              <div className="mb-4">
+                <h1 className="font-display text-4xl font-black text-white mb-2 tracking-tight">
+                  {currentProfile.username}
+                </h1>
+                <p className={`text-sm font-bold uppercase tracking-widest flex items-center justify-center sm:justify-start gap-2 ${rank.color}`}>
+                  <Award size={16} />
+                  RANGO {rank.name}
+                </p>
+              </div>
+
+              <div className="max-w-2xl">
+                <p className="text-slate-300 leading-relaxed text-sm lg:text-base italic">
+                  {currentProfile.bio || "Este cazador todavía no ha escrito su biografía estratégica."}
+                </p>
+              </div>
+            </div>
           </div>
 
-          {/* Status breakdown */}
-          {statusCounts.length > 0 && (
-            <div className="relative mt-6 flex flex-wrap gap-2">
-              {statusCounts.map(s => (
-                <span
-                  key={s.value}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-white/8 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-300"
-                >
-                  <span className="text-sm leading-none">{s.emoji}</span>
-                  {s.label}
-                  <span className="ml-0.5 rounded-md bg-white/8 px-1.5 py-0.5 font-bold text-white">
-                    {s.count}
-                  </span>
-                </span>
+          <div className="relative px-8 pb-8">
+            <div className="max-w-full">
+              <div className="mb-2 flex justify-between text-[11px] font-bold uppercase tracking-wider">
+                <span className="text-slate-500">Progreso de Nivel</span>
+                <span className="text-white">{currentProfile.totalXp.toLocaleString()} / {currentProfile.nextLevelXp.toLocaleString()} XP</span>
+              </div>
+              <div className="h-3 w-full overflow-hidden rounded-full bg-white/5 border border-white/5 shadow-inner p-0.5">
+                <div 
+                  className={`h-full rounded-full transition-all duration-1000 shadow-lg bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer`}
+                  style={{ width: `${progressPercent}%`, backgroundColor: 'currentColor', color: rank.color.replace('text-', '') }}
+                />
+              </div>
+            </div>
+
+            <div className="relative mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+              {[
+                { label: 'Hunts Totales', value: currentProfile.totalGames, icon: Gamepad2, color: 'text-violet-400' },
+                { label: 'Género Predilecto', value: topGenre, icon: Award, color: 'text-emerald-400' },
+                { label: 'Títulos Platinados', value: platinumedCount, icon: Trophy, color: 'text-amber-400' },
+                { label: 'Dificultad Media', value: avgRating, icon: Star, color: 'text-sky-400' },
+              ].map(stat => (
+                <div key={stat.label} className="flex flex-col items-center gap-1 rounded-2xl bg-white/[0.03] border border-white/5 px-4 py-4 transition-colors hover:bg-white/[0.05]">
+                  <stat.icon size={18} className={`${stat.color} mb-1`} />
+                  <span className="font-display text-2xl font-black text-white">{stat.value}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{stat.label}</span>
+                </div>
               ))}
             </div>
-          )}
+          </div>
         </div>
 
-        {/* Games grid */}
-        {profile.games.length === 0 ? (
+        {currentProfile.games.length === 0 ? (
           <div className="glass rounded-3xl p-12 text-center animate-fade-in">
             <Trophy size={48} className="mx-auto mb-4 text-slate-600" />
             <h2 className="font-display text-xl font-bold text-white mb-2">Sin Hunts Registrados</h2>
             <p className="text-slate-400">Este cazador todavía no ha registrado ningún trophy hunt.</p>
           </div>
         ) : (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {profile.games.map((game: GameSummary, i: number) => (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {currentProfile.games.map((game: GameSummary, i: number) => (
               <ProfileGameCard key={game.id} game={game} index={i} />
             ))}
           </div>

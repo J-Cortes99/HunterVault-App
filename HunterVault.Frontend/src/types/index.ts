@@ -63,3 +63,21 @@ export interface IgdbSearchResult {
 export interface Genre {
   name: string;
 }
+
+export interface UserProfile {
+  username: string;
+  bio?: string;
+  avatarUrl?: string;
+  bannerUrl?: string;
+  level: number;
+  totalXp: number;
+  nextLevelXp: number;
+  totalGames: number;
+  games: GameSummary[];
+}
+
+export interface UpdateProfilePayload {
+  bio?: string;
+  avatarUrl?: string;
+  bannerUrl?: string;
+}

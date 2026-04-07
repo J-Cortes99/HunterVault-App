@@ -1,12 +1,14 @@
-import { Sparkles, LogOut, User, Share2, Trophy } from 'lucide-react';
+import { Sparkles, LogOut, User, Share2, Trophy, Edit3 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 interface HeaderProps {
   onAddGame: () => void;
+  onEditProfile: () => void;
 }
 
-export function Header({ onAddGame }: HeaderProps) {
+export function Header({ onAddGame, onEditProfile }: HeaderProps) {
   const { user, logout } = useAuth();
 
   function handleShareProfile() {
@@ -41,7 +43,10 @@ export function Header({ onAddGame }: HeaderProps) {
         {/* Right side */}
         <div className="flex items-center gap-3">
           {user && (
-            <div className="hidden items-center gap-2 rounded-xl border border-white/5 bg-white/5 px-3 py-2 sm:flex">
+            <Link 
+              to={`/profile/${user.username}`}
+              className="hidden items-center gap-2 rounded-xl border border-white/5 bg-white/5 px-3 py-2 sm:flex hover:bg-white/10 transition-colors"
+            >
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-amber-600/40 to-yellow-600/40">
                 <User size={14} className="text-amber-300" />
               </div>
@@ -53,8 +58,17 @@ export function Header({ onAddGame }: HeaderProps) {
                   </span>
                 )}
               </div>
-            </div>
+            </Link>
           )}
+
+          {/* Edit Profile */}
+          <button
+            onClick={onEditProfile}
+            title="Editar mi perfil"
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/5 text-slate-400 transition-all duration-200 hover:border-amber-500/30 hover:bg-amber-500/10 hover:text-amber-400"
+          >
+            <Edit3 size={18} />
+          </button>
 
           {/* Share Profile */}
           <button
