@@ -3,12 +3,14 @@ using HunterVault.Api.Models;
 using HunterVault.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 
 namespace HunterVault.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [EnableRateLimiting("auth")]
     public class AuthController(IAuthService authService) : ControllerBase
     {
         public static User user = new User();

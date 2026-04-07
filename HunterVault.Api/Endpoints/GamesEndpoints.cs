@@ -19,7 +19,7 @@ public static class GamesEndpoints
 
     public static void MapGamesEndpoints(this WebApplication app)
     {
-        var group = app.MapGroup("/api/games").RequireAuthorization();
+        var group = app.MapGroup("/api/games").RequireAuthorization().RequireRateLimiting("fixed");
 
         // GET /games
         group.MapGet("/", async (ClaimsPrincipal user, HunterVaultContext dbContext) =>

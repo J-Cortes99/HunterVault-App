@@ -7,7 +7,7 @@ public static class IgdbEndpoints
 {
     public static void MapIgdbEndpoints(this WebApplication app)
     {
-        var group = app.MapGroup("/api/igdb").RequireAuthorization();
+        var group = app.MapGroup("/api/igdb").RequireAuthorization().RequireRateLimiting("search");
 
         group.MapGet("/search", async ([FromQuery] string q, IIgdbService igdbService) =>
         {

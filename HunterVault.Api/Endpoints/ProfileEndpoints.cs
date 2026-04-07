@@ -10,7 +10,7 @@ public static class ProfileEndpoints
 {
     public static void MapProfileEndpoints(this WebApplication app)
     {
-        var group = app.MapGroup("/api/profile");
+        var group = app.MapGroup("/api/profile").RequireRateLimiting("fixed");
 
         // GET /profile/{username} — public, no auth required
         group.MapGet("/{username}", async (string username, HunterVaultContext dbContext) =>
