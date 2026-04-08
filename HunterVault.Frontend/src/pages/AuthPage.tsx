@@ -36,6 +36,13 @@ export function AuthPage() {
       return;
     }
 
+    if (!isLogin) {
+      if (username.trim().length < 3 || username.trim().length > 20) {
+        toast.error('El nombre de usuario debe tener entre 3 y 20 caracteres');
+        return;
+      }
+    }
+
     if (!isLogin && password !== confirmPassword) {
       toast.error('Las contraseñas no coinciden');
       return;
@@ -153,6 +160,7 @@ export function AuthPage() {
                 placeholder="Introduce tu nombre de usuario"
                 autoComplete="username"
                 disabled={isSubmitting}
+                maxLength={20}
                 className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all duration-200 focus:border-amber-500/50 focus:bg-white/[0.07] focus:ring-2 focus:ring-amber-500/20 disabled:opacity-50"
               />
             </div>

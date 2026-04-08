@@ -1,9 +1,12 @@
-namespace HunterVault.Api.Entities;
+using System.ComponentModel.DataAnnotations;
 using HunterVault.Api.Models;
+
+namespace HunterVault.Api.Entities;
 
 public class User
 {
     public Guid Id { get; set; }
+    [MaxLength(20)]
     public string Username { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
