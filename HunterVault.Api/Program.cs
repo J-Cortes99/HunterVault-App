@@ -1,6 +1,10 @@
 using HunterVault.Api.Data;
 using HunterVault.Api.Endpoints;
 using HunterVault.Api.Services;
+using HunterVault.Api.Hubs;
+using HunterVault.Api.Providers;
+using System.Security.Claims;
+using Microsoft.AspNetCore.SignalR;
 using Scalar.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -14,9 +18,10 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
+        policy.WithOrigins("http://localhost:5173", "https://localhost:5173")
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
     options.AddPolicy("AllowVercel", policy =>
     {
@@ -77,6 +82,8 @@ builder.Services.AddRateLimiter(options =>
 
 builder.Services.AddValidation();
 builder.Services.AddMemoryCache();
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<IUserIdProvider, UserIdProvider>();
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
@@ -100,7 +107,24 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = builder.Configuration["AppSettings:Audience"],
             ValidateLifetime = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["AppSettings:Token"]!)),
-            ValidateIssuerSigningKey = true
+            ValidateIssuerSigningKey = true,
+            NameClaimType = ClaimTypes.Name,
+            RoleClaimType = ClaimTypes.Role
+        };
+
+        // Handle SignalR token in query string
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
         };
     });
 
@@ -132,6 +156,8 @@ app.MapControllers();
 app.MapGamesEndpoints();
 app.MapProfileEndpoints();
 app.MapIgdbEndpoints();
+
+app.MapHub<SocialHub>("/hubs/social");
 
 app.MigrateDb();
 

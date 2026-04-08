@@ -81,3 +81,23 @@ export interface UpdateProfilePayload {
   avatarUrl?: string;
   bannerUrl?: string;
 }
+
+export interface UserSearchResult {
+  id: string;
+  username: string;
+  avatarUrl?: string;
+  level: number;
+  isFollowing: boolean;
+}
+
+export interface ActivityFeedItem {
+  id: number;
+  name: string;
+  status: GameStatus;
+  trophyPercentage?: number;
+  updatedAt: string;
+  user: {
+    username: string;
+    avatarUrl?: string;
+  };
+}

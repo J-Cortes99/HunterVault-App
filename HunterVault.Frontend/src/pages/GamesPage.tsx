@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Search, Trophy, Gamepad2, Clock, ListFilter, ChevronDown, Zap } from 'lucide-react';
+import { Search, Trophy, Gamepad2, Clock, ListFilter, ChevronDown, Zap, Users } from 'lucide-react';
 import type { GameSummary, GameDetails, CreateGamePayload, GameStatus, UpdateProfilePayload } from '../types';
 import { GAME_STATUSES } from '../types';
 import { gamesApi } from '../api/games';
@@ -15,6 +15,7 @@ import { GameModal } from '../components/GameModal';
 import { DeleteModal } from '../components/DeleteModal';
 import { ProfileEditModal } from '../components/ProfileEditModal';
 import { XpInfoModal } from '../components/XpInfoModal';
+import { SocialSidebar } from '../components/SocialSidebar';
 import { calculateGameXp, playXpGainSound, playLevelUpSound } from '../utils/xp';
 
 type ModalState =
@@ -54,6 +55,7 @@ export function GamesPage() {
   const [sortOption, setSortOption]           = useState<SortOption>('recent');
   const [search, setSearch]                   = useState('');
   const [statusFilter, setStatus]             = useState<StatusFilter>('All');
+  const [isSocialOpen, setIsSocialOpen]       = useState(false);
 
   /* ─── Queries ─── */
   const { data: games = [], isLoading: gamesLoading } = useQuery({
@@ -251,7 +253,9 @@ export function GamesPage() {
         onEditProfile={() => setIsProfileEditModalOpen(true)}
       />
 
-      <main className="mx-auto max-w-7xl px-6 py-8">
+      <SocialSidebar isOpen={isSocialOpen} onToggle={() => setIsSocialOpen(!isSocialOpen)} />
+
+      <main className={`mx-auto max-w-7xl px-6 py-8 transition-all duration-300 ${isSocialOpen ? 'mr-80' : ''}`}>
 
         {/* Stats bar */}
         <div className="mb-8 grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -333,25 +337,40 @@ export function GamesPage() {
             />
           </div>
 
-          {/* Sort Filter */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 text-xs text-slate-500 mr-1">
-              <ListFilter size={13} />
-              <span>Ordenar por</span>
-            </div>
-            <div className="relative">
-              <select
-                value={sortOption}
-                onChange={(e) => setSortOption(e.target.value as SortOption)}
-                className="rounded-xl border border-white/10 bg-white/5 py-2 pl-3 pr-8 text-sm text-white outline-none appearance-none cursor-pointer focus:border-amber-500 hover:bg-white/10 transition-colors"
-              >
-                {SORT_OPTIONS.map(opt => (
-                  <option key={opt.value} value={opt.value} className="bg-[#1e1e38]">
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <div className="flex items-center gap-3">
+            {/* Social toggle */}
+            <button
+              onClick={() => setIsSocialOpen(!isSocialOpen)}
+              className={`flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-medium transition-all ${
+                isSocialOpen 
+                  ? 'border-amber-500 bg-amber-500/10 text-amber-500' 
+                  : 'border-white/10 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200'
+              }`}
+            >
+              <Users size={16} />
+              <span className="hidden sm:inline">Comunidad</span>
+            </button>
+
+            {/* Sort Filter */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 mr-1">
+                <ListFilter size={13} />
+                <span>Ordenar por</span>
+              </div>
+              <div className="relative">
+                <select
+                  value={sortOption}
+                  onChange={(e) => setSortOption(e.target.value as SortOption)}
+                  className="rounded-xl border border-white/10 bg-white/5 py-2 pl-3 pr-8 text-sm text-white outline-none appearance-none cursor-pointer focus:border-amber-500 hover:bg-white/10 transition-colors"
+                >
+                  {SORT_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value} className="bg-[#1e1e38]">
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              </div>
             </div>
           </div>
         </div>

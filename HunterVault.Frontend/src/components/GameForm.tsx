@@ -54,7 +54,7 @@ export function GameForm({ initialData, isSubmitting, onSubmit, onCancel }: Game
   function validate() {
     const e: Record<string, string> = {};
     if (!name.trim()) e.name = 'El nombre es obligatorio.';
-    else if (name.length > 50) e.name = 'Máximo 50 caracteres.';
+    else if (name.length > 200) e.name = 'Máximo 200 caracteres.';
 
     if (!platform) e.platform = 'Selecciona una plataforma.';
     const h = parseInt(hoursPlayed);
@@ -109,7 +109,7 @@ export function GameForm({ initialData, isSubmitting, onSubmit, onCancel }: Game
             onFocus={() => setIsFocused(true)}
             onBlur={() => setTimeout(() => setIsFocused(false), 200)}
             placeholder="ej. Hollow Knight"
-            maxLength={50}
+            maxLength={200}
             autoComplete="off"
             className={inputCls(errors.name)}
           />

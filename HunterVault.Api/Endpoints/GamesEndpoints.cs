@@ -3,6 +3,8 @@ using HunterVault.Api.Data;
 using HunterVault.Api.Dtos;
 using HunterVault.Api.Models;
 using HunterVault.Api.Services;
+using HunterVault.Api.Hubs;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace HunterVault.Api.Endpoints;
@@ -74,7 +76,7 @@ public static class GamesEndpoints
             .WithName(GetGameEndpointName);
 
         // POST /games
-        group.MapPost("/", async (CreateGameDto newGame, ClaimsPrincipal user, HunterVaultContext dbContext, IIgdbService igdbService) =>
+        group.MapPost("/", async (CreateGameDto newGame, ClaimsPrincipal user, HunterVaultContext dbContext, IIgdbService igdbService, IHubContext<SocialHub> hubContext) =>
         {
             var userId = GetUserId(user);
             if (userId is null) return Results.Unauthorized();
@@ -111,6 +113,17 @@ public static class GamesEndpoints
             dbContext.Games.Add(game);
             await dbContext.SaveChangesAsync();
 
+            // Notify via SignalR (ONLY TO FOLLOWERS)
+            var followerGuids = await dbContext.UserFollows
+                .Where(f => f.FollowingId == userId.Value)
+                .Select(f => f.FollowerId)
+                .ToListAsync();
+
+            var followerIds = followerGuids.Select(id => id.ToString()).ToList();
+            var username = user.Identity?.Name ?? user.FindFirst(ClaimTypes.Name)?.Value ?? "Un cazador";
+            
+            await hubContext.Clients.Users(followerIds).SendAsync("ReceiveActivityUpdate", username, game.Name, (int)game.Status, game.TrophyPercentage);
+
             GameDetailsDto gameDto = new GameDetailsDto(
                 Id: game.Id,
                 Name: game.Name,
@@ -129,7 +142,7 @@ public static class GamesEndpoints
         });
 
         // PUT /games/1
-        group.MapPut("/{id}", async (int id, UpdateGameDto updatedGame, ClaimsPrincipal user, HunterVaultContext dbContext, IIgdbService igdbService) =>
+        group.MapPut("/{id}", async (int id, UpdateGameDto updatedGame, ClaimsPrincipal user, HunterVaultContext dbContext, IIgdbService igdbService, IHubContext<SocialHub> hubContext) =>
         {
             var userId = GetUserId(user);
             if (userId is null) return Results.Unauthorized();
@@ -169,8 +182,20 @@ public static class GamesEndpoints
             existingGame.DifficultyRating = updatedGame.DifficultyRating;
             existingGame.TrophyPercentage = updatedGame.Status == GameStatus.Platinumed ? 100 : (updatedGame.Status is GameStatus.Backlog or GameStatus.Dropped ? null : updatedGame.TrophyPercentage);
             existingGame.Review = updatedGame.Review;
+            existingGame.UpdatedAt = DateTime.UtcNow;
 
             await dbContext.SaveChangesAsync();
+
+            // Notify via SignalR (ONLY TO FOLLOWERS)
+            var followerGuids = await dbContext.UserFollows
+                .Where(f => f.FollowingId == userId.Value)
+                .Select(f => f.FollowerId)
+                .ToListAsync();
+
+            var followerIds = followerGuids.Select(id => id.ToString()).ToList();
+            var username = user.Identity?.Name ?? user.FindFirst(ClaimTypes.Name)?.Value ?? "Un cazador";
+            
+            await hubContext.Clients.Users(followerIds).SendAsync("ReceiveActivityUpdate", username, existingGame.Name, (int)existingGame.Status, existingGame.TrophyPercentage);
 
             return Results.NoContent();
         });

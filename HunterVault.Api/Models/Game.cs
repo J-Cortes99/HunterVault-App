@@ -16,4 +16,5 @@ public class Game
     public string? CoverUrl { get; set; }
     public string? Review { get; set; }
     public int? IgdbId { get; set; }
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
