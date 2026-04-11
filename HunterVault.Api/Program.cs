@@ -129,6 +129,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IEmailSenderService, EmailSenderService>();
 builder.Services.AddHttpClient<IIgdbService, IgdbService>();
 
 var app = builder.Build();

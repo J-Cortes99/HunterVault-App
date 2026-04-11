@@ -18,4 +18,11 @@ public class User
     public string? BannerUrl { get; set; }
     public ICollection<UserFollow> Followers { get; set; } = new List<UserFollow>();
     public ICollection<UserFollow> Following { get; set; } = new List<UserFollow>();
+
+    // Email verification
+    [MaxLength(254)]
+    public string? Email { get; set; }
+    public bool EmailVerified { get; set; } = false;
+    public string? EmailVerificationCode { get; set; }
+    public DateTime? EmailVerificationCodeExpiry { get; set; }
 }

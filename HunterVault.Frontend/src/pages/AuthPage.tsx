@@ -1,31 +1,88 @@
-import { useState, type FormEvent } from 'react';
-import { Trophy, LogIn, UserPlus, Eye, EyeOff, Loader2, ArrowRight } from 'lucide-react';
+import { useState, useRef, useEffect, type FormEvent, type KeyboardEvent, type ClipboardEvent } from 'react';
+import { Trophy, LogIn, UserPlus, Eye, EyeOff, Loader2, ArrowRight, Mail, ShieldCheck, Check, X, CircleDashed } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { authApi } from '../api/auth';
 import toast from 'react-hot-toast';
 
 type AuthMode = 'login' | 'register';
+type AuthStep = 'form' | 'verify';
 
 export function AuthPage() {
-  const { login, register } = useAuth();
+  const { login, register, verifyEmail } = useAuth();
   const [mode, setMode] = useState<AuthMode>('login');
+  const [step, setStep] = useState<AuthStep>('form');
   const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [pendingEmail, setPendingEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [otpValues, setOtpValues] = useState(['', '', '', '', '', '']);
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const isLogin = mode === 'login';
 
   const resetForm = () => {
     setUsername('');
+    setEmail('');
     setPassword('');
     setConfirmPassword('');
     setShowPassword(false);
+    setOtpValues(['', '', '', '', '', '']);
+    setUsernameStatus('idle');
   };
 
   const toggleMode = () => {
     setMode(m => (m === 'login' ? 'register' : 'login'));
+    setStep('form');
     resetForm();
+  };
+
+  // Debounced username availability check (register mode only)
+  useEffect(() => {
+    if (isLogin || mode !== 'register') return;
+    if (username.trim().length < 3) {
+      setUsernameStatus('idle');
+      return;
+    }
+    setUsernameStatus('checking');
+    const timer = setTimeout(async () => {
+      try {
+        const { available } = await authApi.checkUsername(username.trim());
+        setUsernameStatus(available ? 'available' : 'taken');
+      } catch {
+        setUsernameStatus('idle');
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [username, isLogin, mode]);
+
+  // OTP logic
+  const handleOtpChange = (index: number, value: string) => {
+    const sanitized = value.replace(/\D/g, '').slice(0, 1);
+    const newOtp = [...otpValues];
+    newOtp[index] = sanitized;
+    setOtpValues(newOtp);
+    if (sanitized && index < 5) {
+      otpRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otpValues[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (pasted.length === 6) {
+      setOtpValues(pasted.split(''));
+      otpRefs.current[5]?.focus();
+    }
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -39,6 +96,15 @@ export function AuthPage() {
     if (!isLogin) {
       if (username.trim().length < 3 || username.trim().length > 20) {
         toast.error('El nombre de usuario debe tener entre 3 y 20 caracteres');
+        return;
+      }
+      if (!email.trim()) {
+        toast.error('El email es obligatorio para registrarse');
+        return;
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email.trim())) {
+        toast.error('Introduce un email válido');
         return;
       }
     }
@@ -59,16 +125,49 @@ export function AuthPage() {
         await login(username.trim(), password);
         toast.success(`¡Bienvenido de nuevo, ${username.trim()}!`);
       } else {
-        await register(username.trim(), password);
-        toast.success('¡Cuenta creada! Ya puedes iniciar sesión.');
-        setMode('login');
-        resetForm();
+        const result = await register(username.trim(), password, email.trim());
+        if (result?.requiresVerification && result.email) {
+          setPendingEmail(result.email);
+          setStep('verify');
+          toast.success('Código enviado a tu email. ¡Revisa tu bandeja de entrada!');
+        } else {
+          toast.success('¡Cuenta creada! Ya puedes iniciar sesión.');
+          setMode('login');
+          resetForm();
+        }
       }
     } catch (err: unknown) {
       const errorMsg =
         (err as { response?: { data?: string } })?.response?.data ??
-        (isLogin ? 'Usuario o contraseña inválidos' : 'Error al registrarse. El usuario podría existir ya.');
+        (isLogin ? 'Usuario o contraseña inválidos' : 'Error al registrarse. El usuario o email podría existir ya.');
       toast.error(errorMsg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleVerify = async (e: FormEvent) => {
+    e.preventDefault();
+    const code = otpValues.join('');
+    if (code.length < 6) {
+      toast.error('Introduce los 6 dígitos del código');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await verifyEmail(pendingEmail, code);
+      toast.success('¡Email verificado! Ya puedes iniciar sesión.');
+      setMode('login');
+      setStep('form');
+      resetForm();
+    } catch (err: unknown) {
+      const errorMsg =
+        (err as { response?: { data?: string } })?.response?.data ??
+        'Código inválido o expirado. Inténtalo de nuevo.';
+      toast.error(errorMsg);
+      setOtpValues(['', '', '', '', '', '']);
+      otpRefs.current[0]?.focus();
     } finally {
       setIsSubmitting(false);
     }
@@ -98,7 +197,7 @@ export function AuthPage() {
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center gap-3">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-yellow-600 shadow-2xl shadow-amber-500/30">
-            <Trophy size={32} className="text-white" />
+            {step === 'verify' ? <ShieldCheck size={32} className="text-white" /> : <Trophy size={32} className="text-white" />}
           </div>
           <div className="text-center">
             <h1 className="font-display text-3xl font-bold tracking-tight text-white">
@@ -108,146 +207,283 @@ export function AuthPage() {
               </span>
             </h1>
             <p className="mt-1 text-sm text-slate-400">
-              {isLogin ? 'Inicia sesión en tu cuenta' : 'Crea una nueva cuenta'}
+              {step === 'verify'
+                ? 'Introduce el código que te hemos enviado'
+                : isLogin
+                ? 'Inicia sesión en tu cuenta'
+                : 'Crea una nueva cuenta'}
             </p>
           </div>
         </div>
 
         {/* Card */}
         <div className="glass rounded-2xl p-8 shadow-2xl shadow-black/40">
-          {/* Tabs */}
-          <div className="mb-8 flex overflow-hidden rounded-xl bg-surface-950 p-1">
-            <button
-              type="button"
-              onClick={() => mode !== 'login' && toggleMode()}
-              className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-300 ${
-                isLogin
-                  ? 'bg-gradient-to-r from-amber-500 to-yellow-600 text-white shadow-lg shadow-amber-500/25'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-              id="tab-login"
-            >
-              <LogIn size={16} />
-              Iniciar Sesión
-            </button>
-            <button
-              type="button"
-              onClick={() => mode !== 'register' && toggleMode()}
-              className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-300 ${
-                !isLogin
-                  ? 'bg-gradient-to-r from-amber-500 to-yellow-600 text-white shadow-lg shadow-amber-500/25'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-              id="tab-register"
-            >
-              <UserPlus size={16} />
-              Registrarse
-            </button>
-          </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Username */}
-            <div className="space-y-2">
-              <label htmlFor="auth-username" className="block text-sm font-medium text-slate-300">
-                Nombre de usuario
-              </label>
-              <input
-                id="auth-username"
-                type="text"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
-                placeholder="Introduce tu nombre de usuario"
-                autoComplete="username"
-                disabled={isSubmitting}
-                maxLength={20}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all duration-200 focus:border-amber-500/50 focus:bg-white/[0.07] focus:ring-2 focus:ring-amber-500/20 disabled:opacity-50"
-              />
-            </div>
+          {/* ── VERIFY STEP ── */}
+          {step === 'verify' ? (
+            <form onSubmit={handleVerify} className="space-y-6">
+              {/* Email indicator */}
+              <div className="flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3">
+                <Mail size={18} className="shrink-0 text-amber-400" />
+                <div>
+                  <p className="text-xs text-slate-400">Código enviado a</p>
+                  <p className="text-sm font-semibold text-white">{pendingEmail}</p>
+                </div>
+              </div>
 
-            {/* Password */}
-            <div className="space-y-2">
-              <label htmlFor="auth-password" className="block text-sm font-medium text-slate-300">
-                Contraseña
-              </label>
-              <div className="relative">
-                <input
-                  id="auth-password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="Introduce tu contraseña"
-                  autoComplete={isLogin ? 'current-password' : 'new-password'}
-                  disabled={isSubmitting}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 pr-12 text-sm text-white placeholder-slate-500 outline-none transition-all duration-200 focus:border-amber-500/50 focus:bg-white/[0.07] focus:ring-2 focus:ring-amber-500/20 disabled:opacity-50"
-                />
+              {/* OTP inputs */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-slate-300">
+                  Código de verificación
+                </label>
+                <div className="flex justify-center gap-3">
+                  {otpValues.map((val, i) => (
+                    <input
+                      key={i}
+                      ref={el => { otpRefs.current[i] = el; }}
+                      id={`otp-${i}`}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={val}
+                      onChange={e => handleOtpChange(i, e.target.value)}
+                      onKeyDown={e => handleOtpKeyDown(i, e)}
+                      onPaste={handleOtpPaste}
+                      disabled={isSubmitting}
+                      autoFocus={i === 0}
+                      className={`h-14 w-12 rounded-xl border text-center text-xl font-bold text-white outline-none transition-all duration-200 disabled:opacity-50
+                        ${val
+                          ? 'border-amber-500/70 bg-amber-500/10 shadow-lg shadow-amber-500/10'
+                          : 'border-white/10 bg-white/5 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20'
+                        }`}
+                    />
+                  ))}
+                </div>
+                <p className="text-center text-xs text-slate-500">
+                  También puedes pegar el código directamente
+                </p>
+              </div>
+
+              {/* Submit */}
+              <button
+                type="submit"
+                disabled={isSubmitting || otpValues.some(v => !v)}
+                id="verify-submit"
+                className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 px-6 py-3.5 text-sm font-bold text-white shadow-xl shadow-amber-500/25 transition-all duration-300 hover:scale-[1.02] hover:shadow-amber-500/40 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60"
+              >
+                <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                {isSubmitting ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    Verificando...
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck size={18} />
+                    Verificar Email
+                  </>
+                )}
+              </button>
+
+              <p className="text-center text-xs text-slate-500">
+                ¿No recibiste el código?{' '}
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-200"
-                  tabIndex={-1}
-                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  onClick={() => { setStep('form'); resetForm(); }}
+                  className="font-semibold text-amber-400 transition-colors hover:text-amber-300"
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  Volver al registro
+                </button>
+              </p>
+            </form>
+          ) : (
+            /* ── FORM STEP ── */
+            <>
+              {/* Tabs */}
+              <div className="mb-8 flex overflow-hidden rounded-xl bg-surface-950 p-1">
+                <button
+                  type="button"
+                  onClick={() => mode !== 'login' && toggleMode()}
+                  className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-300 ${
+                    isLogin
+                      ? 'bg-gradient-to-r from-amber-500 to-yellow-600 text-white shadow-lg shadow-amber-500/25'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                  id="tab-login"
+                >
+                  <LogIn size={16} />
+                  Iniciar Sesión
+                </button>
+                <button
+                  type="button"
+                  onClick={() => mode !== 'register' && toggleMode()}
+                  className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-300 ${
+                    !isLogin
+                      ? 'bg-gradient-to-r from-amber-500 to-yellow-600 text-white shadow-lg shadow-amber-500/25'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                  id="tab-register"
+                >
+                  <UserPlus size={16} />
+                  Registrarse
                 </button>
               </div>
-            </div>
 
-            {/* Confirm Password (register only) */}
-            {!isLogin && (
-              <div className="animate-fade-in space-y-2">
-                <label htmlFor="auth-confirm-password" className="block text-sm font-medium text-slate-300">
-                  Confirmar Contraseña
-                </label>
-                <input
-                  id="auth-confirm-password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)}
-                  placeholder="Confirma tu contraseña"
-                  autoComplete="new-password"
+              {/* Form */}
+              <form onSubmit={handleSubmit} className="space-y-5">
+                {/* Username */}
+                <div className="space-y-2">
+                  <label htmlFor="auth-username" className="block text-sm font-medium text-slate-300">
+                    Nombre de usuario
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="auth-username"
+                      type="text"
+                      value={username}
+                      onChange={e => setUsername(e.target.value)}
+                      placeholder="Introduce tu nombre de usuario"
+                      autoComplete="username"
+                      disabled={isSubmitting}
+                      maxLength={20}
+                      className={`w-full rounded-xl border bg-white/5 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all duration-200 disabled:opacity-50 ${
+                        !isLogin && usernameStatus === 'available'
+                          ? 'border-emerald-500/60 focus:border-emerald-500/80 focus:ring-2 focus:ring-emerald-500/20'
+                          : !isLogin && usernameStatus === 'taken'
+                          ? 'border-red-500/60 focus:border-red-500/80 focus:ring-2 focus:ring-red-500/20'
+                          : 'border-white/10 focus:border-amber-500/50 focus:bg-white/[0.07] focus:ring-2 focus:ring-amber-500/20'
+                      }`}
+                    />
+                    {/* Availability indicator icon */}
+                    {!isLogin && username.trim().length >= 3 && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        {usernameStatus === 'checking' && (
+                          <CircleDashed size={16} className="animate-spin text-slate-400" />
+                        )}
+                        {usernameStatus === 'available' && (
+                          <Check size={16} className="text-emerald-400" />
+                        )}
+                        {usernameStatus === 'taken' && (
+                          <X size={16} className="text-red-400" />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {/* Status text */}
+                  {!isLogin && username.trim().length >= 3 && usernameStatus !== 'idle' && usernameStatus !== 'checking' && (
+                    <p className={`text-xs font-medium ${usernameStatus === 'available' ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {usernameStatus === 'available' ? '✓ Nombre de usuario disponible' : '✗ Este nombre de usuario ya está en uso'}
+                    </p>
+                  )}
+                </div>
+
+                {/* Email (register only) */}
+                {!isLogin && (
+                  <div className="animate-fade-in space-y-2">
+                    <label htmlFor="auth-email" className="block text-sm font-medium text-slate-300">
+                      Email <span className="text-amber-400">*</span>
+                    </label>
+                    <div className="relative">
+                      <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                      <input
+                        id="auth-email"
+                        type="email"
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        placeholder="tu@email.com"
+                        autoComplete="email"
+                        disabled={isSubmitting}
+                        className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-11 pr-4 text-sm text-white placeholder-slate-500 outline-none transition-all duration-200 focus:border-amber-500/50 focus:bg-white/[0.07] focus:ring-2 focus:ring-amber-500/20 disabled:opacity-50"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Password */}
+                <div className="space-y-2">
+                  <label htmlFor="auth-password" className="block text-sm font-medium text-slate-300">
+                    Contraseña
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="auth-password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      placeholder="Introduce tu contraseña"
+                      autoComplete={isLogin ? 'current-password' : 'new-password'}
+                      disabled={isSubmitting}
+                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 pr-12 text-sm text-white placeholder-slate-500 outline-none transition-all duration-200 focus:border-amber-500/50 focus:bg-white/[0.07] focus:ring-2 focus:ring-amber-500/20 disabled:opacity-50"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-200"
+                      tabIndex={-1}
+                      aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Confirm Password (register only) */}
+                {!isLogin && (
+                  <div className="animate-fade-in space-y-2">
+                    <label htmlFor="auth-confirm-password" className="block text-sm font-medium text-slate-300">
+                      Confirmar Contraseña
+                    </label>
+                    <input
+                      id="auth-confirm-password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={e => setConfirmPassword(e.target.value)}
+                      placeholder="Confirma tu contraseña"
+                      autoComplete="new-password"
+                      disabled={isSubmitting}
+                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all duration-200 focus:border-amber-500/50 focus:bg-white/[0.07] focus:ring-2 focus:ring-amber-500/20 disabled:opacity-50"
+                    />
+                  </div>
+                )}
+
+                {/* Submit */}
+                <button
+                  type="submit"
                   disabled={isSubmitting}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all duration-200 focus:border-amber-500/50 focus:bg-white/[0.07] focus:ring-2 focus:ring-amber-500/20 disabled:opacity-50"
-                />
-              </div>
-            )}
+                  id="auth-submit"
+                  className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 px-6 py-3.5 text-sm font-bold text-white shadow-xl shadow-amber-500/25 transition-all duration-300 hover:scale-[1.02] hover:shadow-amber-500/40 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60"
+                >
+                  {/* Shine effect */}
+                  <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
 
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              id="auth-submit"
-              className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 px-6 py-3.5 text-sm font-bold text-white shadow-xl shadow-amber-500/25 transition-all duration-300 hover:scale-[1.02] hover:shadow-amber-500/40 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60"
-            >
-              {/* Shine effect */}
-              <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" />
+                      {isLogin ? 'Iniciando sesión...' : 'Creando cuenta...'}
+                    </>
+                  ) : (
+                    <>
+                      {isLogin ? 'Iniciar Sesión' : 'Crear Cuenta'}
+                      <ArrowRight size={18} className="transition-transform duration-200 group-hover:translate-x-1" />
+                    </>
+                  )}
+                </button>
+              </form>
 
-              {isSubmitting ? (
-                <>
-                  <Loader2 size={18} className="animate-spin" />
-                  {isLogin ? 'Iniciando sesión...' : 'Creando cuenta...'}
-                </>
-              ) : (
-                <>
-                  {isLogin ? 'Iniciar Sesión' : 'Crear Cuenta'}
-                  <ArrowRight size={18} className="transition-transform duration-200 group-hover:translate-x-1" />
-                </>
-              )}
-            </button>
-          </form>
-
-          {/* Footer */}
-          <p className="mt-6 text-center text-sm text-slate-500">
-            {isLogin ? '¿No tienes una cuenta?' : '¿Ya tienes una cuenta?'}{' '}
-            <button
-              type="button"
-              onClick={toggleMode}
-              className="font-semibold text-amber-400 transition-colors hover:text-amber-300"
-              id="auth-toggle-mode"
-            >
-              {isLogin ? 'Registrarse' : 'Iniciar Sesión'}
-            </button>
-          </p>
+              {/* Footer */}
+              <p className="mt-6 text-center text-sm text-slate-500">
+                {isLogin ? '¿No tienes una cuenta?' : '¿Ya tienes una cuenta?'}{' '}
+                <button
+                  type="button"
+                  onClick={toggleMode}
+                  className="font-semibold text-amber-400 transition-colors hover:text-amber-300"
+                  id="auth-toggle-mode"
+                >
+                  {isLogin ? 'Registrarse' : 'Iniciar Sesión'}
+                </button>
+              </p>
+            </>
+          )}
         </div>
 
         {/* Bottom decorative text */}

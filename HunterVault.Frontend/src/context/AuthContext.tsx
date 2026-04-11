@@ -14,7 +14,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (username: string, password: string) => Promise<void>;
-  register: (username: string, password: string) => Promise<void>;
+  register: (username: string, password: string, email?: string) => Promise<{ requiresVerification?: boolean; email?: string }>;
+  verifyEmail: (email: string, code: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -142,8 +143,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(info);
   }, [queryClient]);
 
-  const register = useCallback(async (username: string, password: string) => {
-    await authApi.register({ username, password });
+  const register = useCallback(async (username: string, password: string, email?: string) => {
+    const result = await authApi.register({ username, password, email });
+    return result;
+  }, []);
+
+  const verifyEmail = useCallback(async (email: string, code: string) => {
+    await authApi.verifyEmail({ email, code });
   }, []);
 
   const logout = useCallback(() => {
@@ -160,6 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         login,
         register,
+        verifyEmail,
         logout,
       }}
     >

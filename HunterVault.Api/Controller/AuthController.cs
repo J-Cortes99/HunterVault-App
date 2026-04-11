@@ -15,6 +15,18 @@ namespace HunterVault.Api.Controllers
     {
         public static User user = new User();
 
+        [HttpGet("check-username")]
+        [EnableRateLimiting("search")]
+        public async Task<IActionResult> CheckUsername([FromQuery] string username)
+        {
+            if (string.IsNullOrWhiteSpace(username) || username.Length < 3 || username.Length > 20)
+                return Ok(new { available = false });
+
+            var available = await authService.IsUsernameAvailableAsync(username.Trim());
+            return Ok(new { available });
+        }
+
+
         [HttpPost("register")]
         public async Task<ActionResult<User>> Register(UserDto request)
         {
@@ -22,10 +34,29 @@ namespace HunterVault.Api.Controllers
 
             if (user == null)
             {
-                return BadRequest("User already exists.");
+                return BadRequest("El usuario o el email ya existe.");
+            }
+
+            // Si se registró con email, necesita verificarlo
+            if (!string.IsNullOrWhiteSpace(request.Email))
+            {
+                return Ok(new { requiresVerification = true, email = request.Email });
             }
 
             return Ok(user);
+        }
+
+        [HttpPost("verify-email")]
+        public async Task<IActionResult> VerifyEmail(EmailVerificationDto request)
+        {
+            var success = await authService.VerifyEmailAsync(request);
+
+            if (!success)
+            {
+                return BadRequest("Código inválido o expirado.");
+            }
+
+            return Ok(new { message = "Email verificado correctamente. Ya puedes iniciar sesión." });
         }
 
         [HttpPost("login")]
