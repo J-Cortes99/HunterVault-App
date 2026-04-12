@@ -1,10 +1,10 @@
 <h1 align="center" style="font-weight: bold;">HunterVault 🏆</h1>
 
 <p align="center">
-  <a href="#technologies">Technologies</a> •
-  <a href="#started">Getting Started</a> •
-  <a href="#routes">API Endpoints</a> •
-  <a href="#contribute">Contribute</a>
+  <a href="#tecnologias">Tecnologías</a> •
+  <a href="#instalacion">Instalación</a> •
+  <a href="#endpoints">API Endpoints</a> •
+  <a href="#contribuir">Contribuir</a>
 </p>
 
 <p align="center"><b>HunterVault</b> es una plataforma full-stack diseñada para gamers. Permite gestionar bibliotecas de juegos, seguir el progreso del "backlog", registrar trofeos y conectar con otros jugadores en tiempo real. Utiliza la API de IGDB para obtener datos precisos de miles de videojuegos.</p>
@@ -13,7 +13,7 @@
   <a href="https://huntervault.vercel.app">📱 Visitar el Proyecto (Demo en vivo)</a>
 </p>
 
-<h2 id="technologies">💻 Tecnologías</h2>
+<h2 id="tecnologias">💻 Tecnologías</h2>
 
 El proyecto utiliza una arquitectura desacoplada moderna, con el backend robusto en Azure y un frontend ágil en Vercel.
 
@@ -36,7 +36,7 @@ El proyecto utiliza una arquitectura desacoplada moderna, con el backend robusto
 - **Vercel:** Hosting del Frontend.
 - **GitHub Actions:** Pipelines de CI/CD automáticos.
 
-<h2 id="started">🚀 Comenzando</h2>
+<h2 id="instalacion">🚀 Instalación</h2>
 
 Sigue estos pasos para ejecutar el proyecto en tu entorno local de desarrollo.
 
@@ -107,7 +107,7 @@ npm install
 npm run dev
 ```
 
-<h2 id="routes">📍 Endpoints Principales</h2>
+<h2 id="endpoints">📍 Endpoints Principales</h2>
 
 | Ruta | Método | Descripción |
 |---|---|---|
@@ -119,7 +119,7 @@ npm run dev
 | `/api/profile` | GET | Obtiene el perfil y la experiencia (XP) del usuario. |
 
 
-<h2 id="contribute">📫 Contribuir</h2>
+<h2 id="contribuir">📫 Contribuir</h2>
 
 Si quieres contribuir al proyecto, sigue estos pasos:
 
