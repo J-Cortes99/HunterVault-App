@@ -31,6 +31,16 @@ export interface VerifyEmailRequest {
   code: string;
 }
 
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  email: string;
+  code: string;
+  newPassword: string;
+}
+
 export const authApi = {
   login: (data: LoginRequest) =>
     apiClient.post<TokenResponse>('/Auth/login', data).then(r => r.data),
@@ -46,4 +56,10 @@ export const authApi = {
 
   checkUsername: (username: string) =>
     apiClient.get<{ available: boolean }>(`/Auth/check-username?username=${encodeURIComponent(username)}`).then(r => r.data),
+
+  forgotPassword: (data: ForgotPasswordRequest) =>
+    apiClient.post('/Auth/forgot-password', data).then(r => r.data),
+
+  resetPassword: (data: ResetPasswordRequest) =>
+    apiClient.post('/Auth/reset-password', data).then(r => r.data),
 };

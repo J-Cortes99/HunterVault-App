@@ -25,4 +25,8 @@ public class User
     public bool EmailVerified { get; set; } = false;
     public string? EmailVerificationCode { get; set; }
     public DateTime? EmailVerificationCodeExpiry { get; set; }
+
+    // Password reset
+    public string? PasswordResetCode { get; set; }
+    public DateTime? PasswordResetCodeExpiry { get; set; }
 }

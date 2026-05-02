@@ -1,14 +1,14 @@
 import { useState, useRef, useEffect, type FormEvent, type KeyboardEvent, type ClipboardEvent } from 'react';
-import { Trophy, LogIn, UserPlus, Eye, EyeOff, Loader2, ArrowRight, Mail, ShieldCheck, Check, X, CircleDashed } from 'lucide-react';
+import { Trophy, LogIn, UserPlus, Eye, EyeOff, Loader2, ArrowRight, Mail, ShieldCheck, Check, X, CircleDashed, KeyRound, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { authApi } from '../api/auth';
 import toast from 'react-hot-toast';
 
 type AuthMode = 'login' | 'register';
-type AuthStep = 'form' | 'verify';
+type AuthStep = 'form' | 'verify' | 'forgot-email' | 'forgot-reset';
 
 export function AuthPage() {
-  const { login, register, verifyEmail } = useAuth();
+  const { login, register, verifyEmail, forgotPassword, resetPassword } = useAuth();
   const [mode, setMode] = useState<AuthMode>('login');
   const [step, setStep] = useState<AuthStep>('form');
   const [username, setUsername] = useState('');
@@ -20,6 +20,9 @@ export function AuthPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [otpValues, setOtpValues] = useState(['', '', '', '', '', '']);
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [resetNewPassword, setResetNewPassword] = useState('');
+  const [resetConfirmPassword, setResetConfirmPassword] = useState('');
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const isLogin = mode === 'login';
@@ -32,6 +35,9 @@ export function AuthPage() {
     setShowPassword(false);
     setOtpValues(['', '', '', '', '', '']);
     setUsernameStatus('idle');
+    setForgotEmail('');
+    setResetNewPassword('');
+    setResetConfirmPassword('');
   };
 
   const toggleMode = () => {
@@ -173,6 +179,64 @@ export function AuthPage() {
     }
   };
 
+  const handleForgotEmailSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(forgotEmail.trim())) {
+      toast.error('Introduce un email válido');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await forgotPassword(forgotEmail.trim());
+      // Backend returns a generic message even if the email is unknown.
+      setPendingEmail(forgotEmail.trim());
+      setOtpValues(['', '', '', '', '', '']);
+      setStep('forgot-reset');
+      toast.success('Si el email está registrado, te hemos enviado un código.');
+    } catch {
+      toast.error('No se pudo enviar el código. Inténtalo más tarde.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResetSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    const code = otpValues.join('');
+    if (code.length < 6) {
+      toast.error('Introduce los 6 dígitos del código');
+      return;
+    }
+    if (resetNewPassword.length < 4) {
+      toast.error('La contraseña debe tener al menos 4 caracteres');
+      return;
+    }
+    if (resetNewPassword !== resetConfirmPassword) {
+      toast.error('Las contraseñas no coinciden');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await resetPassword(pendingEmail, code, resetNewPassword);
+      toast.success('¡Contraseña restablecida! Ya puedes iniciar sesión.');
+      setMode('login');
+      setStep('form');
+      resetForm();
+    } catch (err: unknown) {
+      const errorMsg =
+        (err as { response?: { data?: string } })?.response?.data ??
+        'Código inválido o expirado. Inténtalo de nuevo.';
+      toast.error(errorMsg);
+      setOtpValues(['', '', '', '', '', '']);
+      otpRefs.current[0]?.focus();
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4">
       {/* Animated background orbs */}
@@ -197,7 +261,13 @@ export function AuthPage() {
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center gap-3">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-yellow-600 shadow-2xl shadow-amber-500/30">
-            {step === 'verify' ? <ShieldCheck size={32} className="text-white" /> : <Trophy size={32} className="text-white" />}
+            {step === 'verify' ? (
+              <ShieldCheck size={32} className="text-white" />
+            ) : step === 'forgot-email' || step === 'forgot-reset' ? (
+              <KeyRound size={32} className="text-white" />
+            ) : (
+              <Trophy size={32} className="text-white" />
+            )}
           </div>
           <div className="text-center">
             <h1 className="font-display text-3xl font-bold tracking-tight text-white">
@@ -209,6 +279,10 @@ export function AuthPage() {
             <p className="mt-1 text-sm text-slate-400">
               {step === 'verify'
                 ? 'Introduce el código que te hemos enviado'
+                : step === 'forgot-email'
+                ? 'Te enviaremos un código a tu email'
+                : step === 'forgot-reset'
+                ? 'Introduce el código y tu nueva contraseña'
                 : isLogin
                 ? 'Inicia sesión en tu cuenta'
                 : 'Crea una nueva cuenta'}
@@ -219,8 +293,173 @@ export function AuthPage() {
         {/* Card */}
         <div className="glass rounded-2xl p-8 shadow-2xl shadow-black/40">
 
-          {/* ── VERIFY STEP ── */}
-          {step === 'verify' ? (
+          {/* ── FORGOT PASSWORD: EMAIL STEP ── */}
+          {step === 'forgot-email' ? (
+            <form onSubmit={handleForgotEmailSubmit} className="space-y-6">
+              <div className="space-y-2">
+                <label htmlFor="forgot-email" className="block text-sm font-medium text-slate-300">
+                  Email de tu cuenta
+                </label>
+                <div className="relative">
+                  <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input
+                    id="forgot-email"
+                    type="email"
+                    value={forgotEmail}
+                    onChange={e => setForgotEmail(e.target.value)}
+                    placeholder="tu@email.com"
+                    autoComplete="email"
+                    autoFocus
+                    disabled={isSubmitting}
+                    className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-11 pr-4 text-sm text-white placeholder-slate-500 outline-none transition-all duration-200 focus:border-amber-500/50 focus:bg-white/[0.07] focus:ring-2 focus:ring-amber-500/20 disabled:opacity-50"
+                  />
+                </div>
+                <p className="text-xs text-slate-500">
+                  Te enviaremos un código de 6 dígitos para restablecer tu contraseña.
+                </p>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting || !forgotEmail.trim()}
+                className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 px-6 py-3.5 text-sm font-bold text-white shadow-xl shadow-amber-500/25 transition-all duration-300 hover:scale-[1.02] hover:shadow-amber-500/40 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60"
+              >
+                <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                {isSubmitting ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    Enviando código...
+                  </>
+                ) : (
+                  <>
+                    <Mail size={18} />
+                    Enviar código
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setStep('form'); resetForm(); }}
+                className="flex w-full items-center justify-center gap-2 text-xs font-semibold text-slate-400 transition-colors hover:text-amber-300"
+              >
+                <ArrowLeft size={14} />
+                Volver al inicio de sesión
+              </button>
+            </form>
+          ) : step === 'forgot-reset' ? (
+            /* ── FORGOT PASSWORD: RESET STEP ── */
+            <form onSubmit={handleResetSubmit} className="space-y-6">
+              <div className="flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3">
+                <Mail size={18} className="shrink-0 text-amber-400" />
+                <div>
+                  <p className="text-xs text-slate-400">Código enviado a</p>
+                  <p className="text-sm font-semibold text-white">{pendingEmail}</p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-slate-300">
+                  Código de verificación
+                </label>
+                <div className="flex justify-center gap-3">
+                  {otpValues.map((val, i) => (
+                    <input
+                      key={i}
+                      ref={el => { otpRefs.current[i] = el; }}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={val}
+                      onChange={e => handleOtpChange(i, e.target.value)}
+                      onKeyDown={e => handleOtpKeyDown(i, e)}
+                      onPaste={handleOtpPaste}
+                      disabled={isSubmitting}
+                      autoFocus={i === 0}
+                      className={`h-14 w-12 rounded-xl border text-center text-xl font-bold text-white outline-none transition-all duration-200 disabled:opacity-50
+                        ${val
+                          ? 'border-amber-500/70 bg-amber-500/10 shadow-lg shadow-amber-500/10'
+                          : 'border-white/10 bg-white/5 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20'
+                        }`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="reset-new-password" className="block text-sm font-medium text-slate-300">
+                  Nueva contraseña
+                </label>
+                <div className="relative">
+                  <input
+                    id="reset-new-password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={resetNewPassword}
+                    onChange={e => setResetNewPassword(e.target.value)}
+                    placeholder="Tu nueva contraseña"
+                    autoComplete="new-password"
+                    disabled={isSubmitting}
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 pr-12 text-sm text-white placeholder-slate-500 outline-none transition-all duration-200 focus:border-amber-500/50 focus:bg-white/[0.07] focus:ring-2 focus:ring-amber-500/20 disabled:opacity-50"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-200"
+                    tabIndex={-1}
+                    aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="reset-confirm-password" className="block text-sm font-medium text-slate-300">
+                  Confirmar nueva contraseña
+                </label>
+                <input
+                  id="reset-confirm-password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={resetConfirmPassword}
+                  onChange={e => setResetConfirmPassword(e.target.value)}
+                  placeholder="Repite la nueva contraseña"
+                  autoComplete="new-password"
+                  disabled={isSubmitting}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-all duration-200 focus:border-amber-500/50 focus:bg-white/[0.07] focus:ring-2 focus:ring-amber-500/20 disabled:opacity-50"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting || otpValues.some(v => !v) || !resetNewPassword || !resetConfirmPassword}
+                className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 px-6 py-3.5 text-sm font-bold text-white shadow-xl shadow-amber-500/25 transition-all duration-300 hover:scale-[1.02] hover:shadow-amber-500/40 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60"
+              >
+                <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                {isSubmitting ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    Restableciendo...
+                  </>
+                ) : (
+                  <>
+                    <KeyRound size={18} />
+                    Restablecer contraseña
+                  </>
+                )}
+              </button>
+
+              <p className="text-center text-xs text-slate-500">
+                ¿No recibiste el código?{' '}
+                <button
+                  type="button"
+                  onClick={() => { setStep('forgot-email'); setOtpValues(['', '', '', '', '', '']); }}
+                  className="font-semibold text-amber-400 transition-colors hover:text-amber-300"
+                >
+                  Reenviar
+                </button>
+              </p>
+            </form>
+          ) : step === 'verify' ? (
             <form onSubmit={handleVerify} className="space-y-6">
               {/* Email indicator */}
               <div className="flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3">
@@ -401,9 +640,20 @@ export function AuthPage() {
 
                 {/* Password */}
                 <div className="space-y-2">
-                  <label htmlFor="auth-password" className="block text-sm font-medium text-slate-300">
-                    Contraseña
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="auth-password" className="block text-sm font-medium text-slate-300">
+                      Contraseña
+                    </label>
+                    {isLogin && (
+                      <button
+                        type="button"
+                        onClick={() => { setStep('forgot-email'); setForgotEmail(''); }}
+                        className="text-xs font-semibold text-amber-400 transition-colors hover:text-amber-300"
+                      >
+                        ¿Olvidaste tu contraseña?
+                      </button>
+                    )}
+                  </div>
                   <div className="relative">
                     <input
                       id="auth-password"

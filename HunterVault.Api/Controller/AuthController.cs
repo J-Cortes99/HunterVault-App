@@ -1,6 +1,7 @@
 using HunterVault.Api.Entities;
 using HunterVault.Api.Models;
 using HunterVault.Api.Services;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -83,6 +84,28 @@ namespace HunterVault.Api.Controllers
             }
 
             return Ok(result);
+        }
+
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordDto request)
+        {
+            await authService.ForgotPasswordAsync(request);
+
+            // Generic response on purpose: don't reveal whether the email exists.
+            return Ok(new { message = "Si el email está registrado, recibirás un código para restablecer tu contraseña." });
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword(ResetPasswordDto request)
+        {
+            var success = await authService.ResetPasswordAsync(request);
+
+            if (!success)
+            {
+                return BadRequest("Código inválido o expirado.");
+            }
+
+            return Ok(new { message = "Contraseña restablecida correctamente. Ya puedes iniciar sesión." });
         }
 
         [Authorize]

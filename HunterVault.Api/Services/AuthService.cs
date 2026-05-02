@@ -119,6 +119,48 @@ public class AuthService(
         return !await context.Users.AnyAsync(u => u.Username == username);
     }
 
+    public async Task ForgotPasswordAsync(ForgotPasswordDto request)
+    {
+        var normalizedEmail = request.Email.ToLowerInvariant();
+        var user = await context.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail);
+
+        // Silently no-op if the email is unknown so we don't leak which addresses are registered.
+        if (user is null)
+            return;
+
+        var code = GenerateVerificationCode();
+        user.PasswordResetCode = code;
+        user.PasswordResetCodeExpiry = DateTime.UtcNow.AddMinutes(15);
+
+        await context.SaveChangesAsync();
+        await emailSender.SendPasswordResetCodeAsync(user.Email!, code);
+    }
+
+    public async Task<bool> ResetPasswordAsync(ResetPasswordDto request)
+    {
+        var normalizedEmail = request.Email.ToLowerInvariant();
+        var user = await context.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail);
+
+        if (user is null)
+            return false;
+
+        if (string.IsNullOrEmpty(user.PasswordResetCode) || user.PasswordResetCode != request.Code)
+            return false;
+
+        if (user.PasswordResetCodeExpiry is null || user.PasswordResetCodeExpiry < DateTime.UtcNow)
+            return false;
+
+        user.PasswordHash = new PasswordHasher<User>().HashPassword(user, request.NewPassword);
+        user.PasswordResetCode = null;
+        user.PasswordResetCodeExpiry = null;
+        // Invalidate any active refresh token so the previous session can't keep using it.
+        user.RefreshToken = null;
+        user.RefreshTokenExpiryTime = null;
+
+        await context.SaveChangesAsync();
+        return true;
+    }
+
     public async Task<TokenResponseDto?> RefreshTokenAsync(RefreshTokenRequestDto request)
     {
         var user = await ValidateRefreshTokenAsync(request.UserId, request.RefreshToken);

@@ -16,6 +16,8 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<void>;
   register: (username: string, password: string, email?: string) => Promise<{ requiresVerification?: boolean; email?: string }>;
   verifyEmail: (email: string, code: string) => Promise<void>;
+  forgotPassword: (email: string) => Promise<void>;
+  resetPassword: (email: string, code: string, newPassword: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -152,6 +154,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await authApi.verifyEmail({ email, code });
   }, []);
 
+  const forgotPassword = useCallback(async (email: string) => {
+    await authApi.forgotPassword({ email });
+  }, []);
+
+  const resetPassword = useCallback(async (email: string, code: string, newPassword: string) => {
+    await authApi.resetPassword({ email, code, newPassword });
+  }, []);
+
   const logout = useCallback(() => {
     clearTokens();
     queryClient.clear();
@@ -167,6 +177,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         register,
         verifyEmail,
+        forgotPassword,
+        resetPassword,
         logout,
       }}
     >
