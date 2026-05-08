@@ -1,215 +1,53 @@
-using System.Security.Claims;
-using HunterVault.Api.Data;
-using HunterVault.Api.Dtos;
-using HunterVault.Api.Models;
-using HunterVault.Api.Services;
-using HunterVault.Api.Hubs;
-using Microsoft.AspNetCore.SignalR;
-using Microsoft.EntityFrameworkCore;
+using HunterVault.Api.Configuration;
+using HunterVault.Application.Abstractions.Games;
+using HunterVault.Application.Abstractions.Identity;
+using HunterVault.Application.Dtos.Games;
 
 namespace HunterVault.Api.Endpoints;
 
 public static class GamesEndpoints
 {
-    const string GetGameEndpointName = "GetGame";
-
-    private static Guid? GetUserId(ClaimsPrincipal user)
-    {
-        var value = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        return Guid.TryParse(value, out var id) ? id : null;
-    }
+    private const string GetGameRouteName = "GetGame";
 
     public static void MapGamesEndpoints(this WebApplication app)
     {
-        var group = app.MapGroup("/api/games").RequireAuthorization().RequireRateLimiting("fixed");
+        var group = app.MapGroup("/api/games")
+            .RequireAuthorization()
+            .RequireRateLimiting(RateLimitingConfiguration.Fixed);
 
-        // GET /games
-        group.MapGet("/", async (ClaimsPrincipal user, HunterVaultContext dbContext) =>
+        group.MapGet("/", async (IUserContext ctx, IGameService games, CancellationToken ct) =>
         {
-            var userId = GetUserId(user);
-            if (userId is null) return Results.Unauthorized();
-
-            return Results.Ok(await dbContext.Games
-                .Where(game => game.UserId == userId.Value)
-                .Select(game => new GameSummaryDto(
-                    Id: game.Id,
-                    Name: game.Name,
-                    Genres: game.Genres,
-                    Platform: game.Platform,
-                    Status: game.Status,
-                    HoursPlayed: game.HoursPlayed,
-                    DifficultyRating: game.DifficultyRating,
-                    TrophyPercentage: game.TrophyPercentage,
-                    CoverUrl: game.CoverUrl,
-                    Review: game.Review,
-                    IgdbId: game.IgdbId
-                ))
-                .AsNoTracking()
-                .ToListAsync());
+            if (ctx.UserId is not Guid uid) return Results.Unauthorized();
+            return Results.Ok(await games.GetAllForUserAsync(uid, ct));
         });
 
-        // GET /games/1
-        group.MapGet("/{id}", async (int id, ClaimsPrincipal user, HunterVaultContext dbContext) =>
+        group.MapGet("/{id:int}", async (int id, IUserContext ctx, IGameService games, CancellationToken ct) =>
         {
-            var userId = GetUserId(user);
-            if (userId is null) return Results.Unauthorized();
+            if (ctx.UserId is not Guid uid) return Results.Unauthorized();
+            var game = await games.GetByIdAsync(id, uid, ct);
+            return game is null ? Results.NotFound() : Results.Ok(game);
+        }).WithName(GetGameRouteName);
 
-            var game = await dbContext.Games.FirstOrDefaultAsync(
-                g => g.Id == id && g.UserId == userId.Value);
-
-            return game is null ? Results.NotFound() : Results.Ok(
-                new GameDetailsDto(
-                    Id: game.Id,
-                    Name: game.Name,
-                    Genres: game.Genres,
-                    Platform: game.Platform,
-                    Status: game.Status,
-                    HoursPlayed: game.HoursPlayed,
-                    DifficultyRating: game.DifficultyRating,
-                    TrophyPercentage: game.TrophyPercentage,
-                    CoverUrl: game.CoverUrl,
-                    Review: game.Review,
-                    IgdbId: game.IgdbId
-                )
-            );
-        })
-            .WithName(GetGameEndpointName);
-
-        // POST /games
-        group.MapPost("/", async (CreateGameDto newGame, ClaimsPrincipal user, HunterVaultContext dbContext, IIgdbService igdbService, IHubContext<SocialHub> hubContext) =>
+        group.MapPost("/", async (CreateGameDto input, IUserContext ctx, IGameService games, CancellationToken ct) =>
         {
-            var userId = GetUserId(user);
-            if (userId is null) return Results.Unauthorized();
-
-            Game game = new Game
-            {
-                Name = newGame.Name,
-                Platform = newGame.Platform,
-                Status = newGame.Status,
-                HoursPlayed = newGame.HoursPlayed,
-                DifficultyRating = newGame.DifficultyRating,
-                TrophyPercentage = newGame.Status == GameStatus.Platinumed ? 100 : (newGame.Status is GameStatus.Backlog or GameStatus.Dropped ? null : newGame.TrophyPercentage),
-                Review = newGame.Review,
-                UserId = userId.Value,
-                IgdbId = newGame.IgdbId
-            };
-
-            IgdbGameDetailsDto? details = null;
-            if (game.IgdbId.HasValue)
-            {
-                details = await igdbService.GetFullGameDetailsByIdAsync(game.IgdbId.Value);
-            }
-
-            if (details != null)
-            {
-                game.CoverUrl = details.CoverUrl;
-                game.Genres = details.Genres;
-                if (game.IgdbId == null || game.IgdbId == 0)
-                {
-                    game.IgdbId = details.Id;
-                }
-            }
-
-            dbContext.Games.Add(game);
-            await dbContext.SaveChangesAsync();
-
-            // Notify via SignalR (ONLY TO FOLLOWERS)
-            var followerGuids = await dbContext.UserFollows
-                .Where(f => f.FollowingId == userId.Value)
-                .Select(f => f.FollowerId)
-                .ToListAsync();
-
-            var followerIds = followerGuids.Select(id => id.ToString()).ToList();
-            var username = user.Identity?.Name ?? user.FindFirst(ClaimTypes.Name)?.Value ?? "Un cazador";
-            
-            await hubContext.Clients.Users(followerIds).SendAsync("ReceiveActivityUpdate", username, game.Name, (int)game.Status, game.TrophyPercentage);
-
-            GameDetailsDto gameDto = new GameDetailsDto(
-                Id: game.Id,
-                Name: game.Name,
-                Genres: game.Genres,
-                Platform: game.Platform,
-                Status: game.Status,
-                HoursPlayed: game.HoursPlayed,
-                DifficultyRating: game.DifficultyRating,
-                TrophyPercentage: game.TrophyPercentage,
-                CoverUrl: game.CoverUrl,
-                Review: game.Review,
-                IgdbId: game.IgdbId
-            );
-
-            return Results.CreatedAtRoute(GetGameEndpointName, new { id = gameDto.Id }, gameDto);
+            if (ctx.UserId is not Guid uid) return Results.Unauthorized();
+            var actor = ctx.Username ?? "Un cazador";
+            var created = await games.CreateAsync(input, uid, actor, ct);
+            return Results.CreatedAtRoute(GetGameRouteName, new { id = created.Id }, created);
         });
 
-        // PUT /games/1
-        group.MapPut("/{id}", async (int id, UpdateGameDto updatedGame, ClaimsPrincipal user, HunterVaultContext dbContext, IIgdbService igdbService, IHubContext<SocialHub> hubContext) =>
+        group.MapPut("/{id:int}", async (int id, UpdateGameDto input, IUserContext ctx, IGameService games, CancellationToken ct) =>
         {
-            var userId = GetUserId(user);
-            if (userId is null) return Results.Unauthorized();
-
-            var existingGame = await dbContext.Games.FirstOrDefaultAsync(
-                g => g.Id == id && g.UserId == userId.Value);
-            if (existingGame is null)
-            {
-                return Results.NotFound();
-            }
-
-            if (existingGame.Name != updatedGame.Name || existingGame.IgdbId != updatedGame.IgdbId || string.IsNullOrEmpty(existingGame.CoverUrl))
-            {
-                existingGame.Name = updatedGame.Name;
-                existingGame.IgdbId = updatedGame.IgdbId;
-
-                IgdbGameDetailsDto? details = null;
-                if (existingGame.IgdbId.HasValue)
-                {
-                    details = await igdbService.GetFullGameDetailsByIdAsync(existingGame.IgdbId.Value);
-                }
-
-                if (details != null)
-                {
-                    existingGame.CoverUrl = details.CoverUrl;
-                    existingGame.Genres = details.Genres;
-                    if (existingGame.IgdbId == null || existingGame.IgdbId == 0)
-                    {
-                        existingGame.IgdbId = details.Id;
-                    }
-                }
-            }
-            
-            existingGame.Platform = updatedGame.Platform;
-            existingGame.Status = updatedGame.Status;
-            existingGame.HoursPlayed = updatedGame.HoursPlayed;
-            existingGame.DifficultyRating = updatedGame.DifficultyRating;
-            existingGame.TrophyPercentage = updatedGame.Status == GameStatus.Platinumed ? 100 : (updatedGame.Status is GameStatus.Backlog or GameStatus.Dropped ? null : updatedGame.TrophyPercentage);
-            existingGame.Review = updatedGame.Review;
-            existingGame.UpdatedAt = DateTime.UtcNow;
-
-            await dbContext.SaveChangesAsync();
-
-            // Notify via SignalR (ONLY TO FOLLOWERS)
-            var followerGuids = await dbContext.UserFollows
-                .Where(f => f.FollowingId == userId.Value)
-                .Select(f => f.FollowerId)
-                .ToListAsync();
-
-            var followerIds = followerGuids.Select(id => id.ToString()).ToList();
-            var username = user.Identity?.Name ?? user.FindFirst(ClaimTypes.Name)?.Value ?? "Un cazador";
-            
-            await hubContext.Clients.Users(followerIds).SendAsync("ReceiveActivityUpdate", username, existingGame.Name, (int)existingGame.Status, existingGame.TrophyPercentage);
-
-            return Results.NoContent();
+            if (ctx.UserId is not Guid uid) return Results.Unauthorized();
+            var actor = ctx.Username ?? "Un cazador";
+            var updated = await games.UpdateAsync(id, input, uid, actor, ct);
+            return updated ? Results.NoContent() : Results.NotFound();
         });
 
-        // DELETE /games/1
-        group.MapDelete("/{id}", async (int id, ClaimsPrincipal user, HunterVaultContext dbContext) =>
+        group.MapDelete("/{id:int}", async (int id, IUserContext ctx, IGameService games, CancellationToken ct) =>
         {
-            var userId = GetUserId(user);
-            if (userId is null) return Results.Unauthorized();
-
-            await dbContext.Games
-                .Where(game => game.Id == id && game.UserId == userId.Value)
-                .ExecuteDeleteAsync();
-
+            if (ctx.UserId is not Guid uid) return Results.Unauthorized();
+            await games.DeleteAsync(id, uid, ct);
             return Results.NoContent();
         });
     }
