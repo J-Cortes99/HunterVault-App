@@ -2,4 +2,5 @@
   <Project Path="HunterVault.Api/HunterVault.Api.csproj" />
   <Project Path="HunterVault.Domain/HunterVault.Domain.csproj" />
   <Project Path="HunterVault.Application/HunterVault.Application.csproj" />
+  <Project Path="HunterVault.Infrastructure/HunterVault.Infrastructure.csproj" />
 </Solution>
