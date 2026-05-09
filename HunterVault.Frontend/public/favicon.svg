@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80">
+  <defs>
+    <linearGradient id="hv-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00e5ff" />
+      <stop offset="100%" stop-color="#008fa8" />
+    </linearGradient>
+  </defs>
+  <polygon points="14,0 66,0 80,14 80,66 66,80 14,80 0,66 0,14" fill="url(#hv-bg)" />
+  <g transform="translate(40 40) scale(1.5) translate(-12 -12)"
+     fill="none" stroke="#04070f" stroke-width="2.4"
+     stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="10" />
+    <line x1="22" y1="12" x2="18" y2="12" />
+    <line x1="6" y1="12" x2="2" y2="12" />
+    <line x1="12" y1="6" x2="12" y2="2" />
+    <line x1="12" y1="18" x2="12" y2="22" />
+  </g>
+</svg>
