@@ -1,4 +1,4 @@
-import { Sparkles, LogOut, User, Share2, Trophy, Edit3 } from 'lucide-react';
+import { Sparkles, LogOut, User, Share2, Trophy, Edit3, FlaskConical } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -9,7 +9,7 @@ interface HeaderProps {
 }
 
 export function Header({ onAddGame, onEditProfile }: HeaderProps) {
-  const { user, logout } = useAuth();
+  const { user, logout, isDemo } = useAuth();
 
   function handleShareProfile() {
     if (!user) return;
@@ -38,6 +38,15 @@ export function Header({ onAddGame, onEditProfile }: HeaderProps) {
             </span>
             <span className="text-xs text-slate-500">Rastreador de Trofeos y Logros</span>
           </div>
+          {isDemo && (
+            <span
+              title="Estás navegando con datos de ejemplo. Los cambios se resetean al recargar."
+              className="ml-2 hidden items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-300 sm:inline-flex"
+            >
+              <FlaskConical size={11} />
+              Modo Demo
+            </span>
+          )}
         </div>
 
         {/* Right side */}

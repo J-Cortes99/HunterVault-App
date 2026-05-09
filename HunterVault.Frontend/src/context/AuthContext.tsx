@@ -2,6 +2,8 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import { useQueryClient } from '@tanstack/react-query';
 import { authApi, type TokenResponse } from '../api/auth';
 import { apiClient } from '../api/client';
+import { installDemoAdapter, uninstallDemoAdapter, isDemoActive } from '../demo/adapter';
+import { buildDemoJwt } from '../demo/jwt';
 
 interface UserInfo {
   id: string;
@@ -13,11 +15,13 @@ interface AuthContextType {
   user: UserInfo | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isDemo: boolean;
   login: (username: string, password: string) => Promise<void>;
   register: (username: string, password: string, email?: string) => Promise<{ requiresVerification?: boolean; email?: string }>;
   verifyEmail: (email: string, code: string) => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
   resetPassword: (email: string, code: string, newPassword: string) => Promise<void>;
+  enterDemo: () => void;
   logout: () => void;
 }
 
@@ -73,10 +77,15 @@ function clearTokens() {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDemo, setIsDemo] = useState(false);
   const queryClient = useQueryClient();
 
   // Restore session on mount
   useEffect(() => {
+    if (isDemoActive()) {
+      installDemoAdapter();
+      setIsDemo(true);
+    }
     const token = localStorage.getItem('accessToken');
     if (token) {
       const info = extractUserInfo(token);
@@ -162,11 +171,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await authApi.resetPassword({ email, code, newPassword });
   }, []);
 
+  const enterDemo = useCallback(() => {
+    installDemoAdapter();
+    const token = buildDemoJwt();
+    const info = extractUserInfo(token);
+    if (!info) return;
+    saveTokens({ accessToken: token, refreshToken: 'demo-refresh' }, info.id);
+    queryClient.clear();
+    setIsDemo(true);
+    setUser(info);
+  }, [queryClient]);
+
   const logout = useCallback(() => {
     clearTokens();
     queryClient.clear();
+    if (isDemo) {
+      uninstallDemoAdapter();
+      setIsDemo(false);
+    }
     setUser(null);
-  }, [queryClient]);
+  }, [queryClient, isDemo]);
 
   return (
     <AuthContext.Provider
@@ -174,11 +198,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isAuthenticated: !!user,
         isLoading,
+        isDemo,
         login,
         register,
         verifyEmail,
         forgotPassword,
         resetPassword,
+        enterDemo,
         logout,
       }}
     >

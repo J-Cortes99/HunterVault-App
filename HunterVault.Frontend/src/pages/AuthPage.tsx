@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type FormEvent, type KeyboardEvent, type ClipboardEvent } from 'react';
-import { Trophy, LogIn, UserPlus, Eye, EyeOff, Loader2, ArrowRight, Mail, ShieldCheck, Check, X, CircleDashed, KeyRound, ArrowLeft } from 'lucide-react';
+import { Trophy, LogIn, UserPlus, Eye, EyeOff, Loader2, ArrowRight, Mail, ShieldCheck, Check, X, CircleDashed, KeyRound, ArrowLeft, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { authApi } from '../api/auth';
 import toast from 'react-hot-toast';
@@ -8,7 +8,7 @@ type AuthMode = 'login' | 'register';
 type AuthStep = 'form' | 'verify' | 'forgot-email' | 'forgot-reset';
 
 export function AuthPage() {
-  const { login, register, verifyEmail, forgotPassword, resetPassword } = useAuth();
+  const { login, register, verifyEmail, forgotPassword, resetPassword, enterDemo } = useAuth();
   const [mode, setMode] = useState<AuthMode>('login');
   const [step, setStep] = useState<AuthStep>('form');
   const [username, setUsername] = useState('');
@@ -731,6 +731,31 @@ export function AuthPage() {
                 >
                   {isLogin ? 'Registrarse' : 'Iniciar Sesión'}
                 </button>
+              </p>
+
+              {/* Demo divider + button */}
+              <div className="mt-6 flex items-center gap-3">
+                <div className="h-px flex-1 bg-white/5" />
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">
+                  o
+                </span>
+                <div className="h-px flex-1 bg-white/5" />
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  enterDemo();
+                  toast.success('Bienvenido a la demo. Los cambios no se guardan.', { icon: '✨' });
+                }}
+                disabled={isSubmitting}
+                className="group mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 px-6 py-3 text-sm font-semibold text-amber-300 transition-all duration-200 hover:border-amber-500/50 hover:bg-amber-500/10 hover:text-amber-200 disabled:pointer-events-none disabled:opacity-50"
+                id="auth-demo"
+              >
+                <Sparkles size={16} className="transition-transform group-hover:rotate-12" />
+                Probar demo sin cuenta
+              </button>
+              <p className="mt-2 text-center text-[11px] text-slate-600">
+                Sin registro · Datos de ejemplo · Los cambios se resetean al recargar
               </p>
             </>
           )}
