@@ -1,19 +1,25 @@
 export function SkeletonCard() {
   return (
-    <div className="glass flex flex-col gap-4 rounded-2xl p-5">
-      <div className="flex items-center justify-between">
-        <div className="skeleton h-6 w-24" />
-        <div className="skeleton h-4 w-8" />
-      </div>
-      <div className="skeleton h-6 w-3/4" />
-      <div className="skeleton h-4 w-1/2" />
-      <div className="flex flex-col gap-2">
-        <div className="skeleton h-4 w-24" />
-        <div className="skeleton h-4 w-32" />
-      </div>
-      <div className="flex gap-2 border-t border-white/5 pt-4">
-        <div className="skeleton h-8 flex-1" />
-        <div className="skeleton h-8 flex-1" />
+    <div className="hud-clip hud-panel-bordered flex flex-col overflow-hidden animate-fade-in">
+      <div className="skeleton aspect-[3/4] w-full" />
+      <div className="flex flex-col gap-3 p-5">
+        <div className="skeleton h-3 w-20" />
+        <div className="skeleton h-5 w-3/4" />
+        <div className="grid grid-cols-2 gap-2 border-y border-signal-400/15 py-3">
+          <div className="flex flex-col gap-1.5">
+            <div className="skeleton h-2.5 w-16" />
+            <div className="skeleton h-3 w-12" />
+          </div>
+          <div className="flex flex-col gap-1.5 items-end">
+            <div className="skeleton h-2.5 w-16" />
+            <div className="skeleton h-3 w-12" />
+          </div>
+        </div>
+        <div className="skeleton h-1.5 w-full" />
+        <div className="flex gap-2 mt-1">
+          <div className="skeleton h-9 flex-1" />
+          <div className="skeleton h-9 w-9" />
+        </div>
       </div>
     </div>
   );

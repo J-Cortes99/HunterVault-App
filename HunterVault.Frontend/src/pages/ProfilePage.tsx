@@ -1,69 +1,69 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { profileApi } from '../api/profile';
 import {
-  Trophy, ArrowLeft, Award,
+  Crosshair, ArrowLeft, Award,
   Loader2, SearchX, Star, Clock, Gamepad2,
-  User as UserIcon
+  User as UserIcon, Trophy, Zap, Shield
 } from 'lucide-react';
 import type { GameSummary, GameStatus, UserProfile } from '../types';
 import { FaWindows, FaPlaystation, FaXbox } from 'react-icons/fa6';
 import { BsNintendoSwitch } from 'react-icons/bs';
 
-const GENRE_GRADIENTS: Record<string, string> = {
-  'Action': 'from-red-500/20 to-orange-500/20 text-orange-300 border-orange-500/20',
-  'Adventure': 'from-green-500/20 to-teal-500/20 text-teal-300 border-teal-500/20',
-  'RPG': 'from-purple-500/20 to-violet-500/20 text-violet-300 border-purple-500/20',
-  'Role-playing (RPG)': 'from-purple-500/20 to-violet-500/20 text-violet-300 border-purple-500/20',
-  'Strategy': 'from-blue-500/20 to-cyan-500/20 text-cyan-300 border-cyan-500/20',
-  'Shooter': 'from-orange-500/20 to-red-600/20 text-orange-400 border-red-500/20',
-  'Music': 'from-pink-500/20 to-rose-400/20 text-pink-300 border-rose-500/20',
-  'Platform': 'from-sky-400/20 to-blue-500/20 text-sky-300 border-sky-400/20',
-  'Sports': 'from-yellow-500/20 to-lime-500/20 text-lime-300 border-lime-500/20',
-  'Sport': 'from-yellow-500/20 to-lime-500/20 text-lime-300 border-lime-500/20',
-  'Horror': 'from-red-900/30 to-rose-700/20 text-rose-300 border-rose-500/20',
-  'Simulation': 'from-sky-500/20 to-blue-500/20 text-sky-300 border-sky-500/20',
-  'Simulator': 'from-sky-500/20 to-blue-500/20 text-sky-300 border-sky-500/20',
-  'Fighting': 'from-orange-600/20 to-red-600/20 text-red-300 border-red-500/20',
-  'Racing': 'from-amber-500/20 to-yellow-500/20 text-amber-300 border-amber-500/20',
-  'Puzzle': 'from-pink-500/20 to-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/20',
-  'Indie': 'from-amber-400/20 to-yellow-600/20 text-amber-200 border-amber-400/20',
-  'Arcade': 'from-cyan-400/20 to-fuchsia-500/20 text-cyan-200 border-cyan-400/20',
-  'Visual Novel': 'from-fuchsia-400/20 to-purple-500/20 text-fuchsia-300 border-purple-400/20',
-  'Card & Board Game': 'from-emerald-600/20 to-teal-500/20 text-emerald-300 border-emerald-500/20',
-  'Tactical': 'from-indigo-500/20 to-blue-700/20 text-indigo-300 border-indigo-500/20',
-  'MOBA': 'from-violet-600/20 to-purple-700/20 text-violet-300 border-violet-500/20',
-  'Point-and-click': 'from-cyan-500/20 to-teal-600/20 text-cyan-300 border-teal-500/20',
-  'Hack and slash/Beat \'em up': 'from-rose-600/20 to-red-700/20 text-rose-300 border-red-600/20',
-  'Real Time Strategy (RTS)': 'from-blue-600/20 to-cyan-700/20 text-blue-200 border-blue-500/20',
-  'Turn-based strategy (TBS)': 'from-indigo-600/20 to-violet-700/20 text-indigo-200 border-indigo-500/20',
+const GENRE_COLORS: Record<string, string> = {
+  'Action':                       'border-alert-400/40 bg-alert-400/10 text-alert-300',
+  'Adventure':                    'border-pulse-400/40 bg-pulse-400/10 text-pulse-300',
+  'RPG':                          'border-fuchsia-400/40 bg-fuchsia-500/10 text-fuchsia-300',
+  'Role-playing (RPG)':           'border-fuchsia-400/40 bg-fuchsia-500/10 text-fuchsia-300',
+  'Strategy':                     'border-signal-400/40 bg-signal-400/10 text-signal-300',
+  'Shooter':                      'border-power-400/40 bg-power-400/10 text-power-300',
+  'Music':                        'border-pink-400/40 bg-pink-500/10 text-pink-300',
+  'Platform':                     'border-sky-400/40 bg-sky-500/10 text-sky-300',
+  'Sports':                       'border-lime-400/40 bg-lime-500/10 text-lime-300',
+  'Sport':                        'border-lime-400/40 bg-lime-500/10 text-lime-300',
+  'Horror':                       'border-rose-500/40 bg-rose-500/10 text-rose-300',
+  'Simulation':                   'border-cyan-400/40 bg-cyan-500/10 text-cyan-300',
+  'Simulator':                    'border-cyan-400/40 bg-cyan-500/10 text-cyan-300',
+  'Fighting':                     'border-orange-500/40 bg-orange-500/10 text-orange-300',
+  'Racing':                       'border-power-400/40 bg-power-400/10 text-power-300',
+  'Puzzle':                       'border-violet-400/40 bg-violet-500/10 text-violet-300',
+  'Indie':                        'border-power-300/40 bg-power-300/10 text-power-200',
+  'Arcade':                       'border-signal-400/40 bg-signal-400/10 text-signal-200',
+  'Visual Novel':                 'border-fuchsia-400/40 bg-fuchsia-500/10 text-fuchsia-300',
+  'Card & Board Game':            'border-emerald-400/40 bg-emerald-500/10 text-emerald-300',
+  'Tactical':                     'border-indigo-400/40 bg-indigo-500/10 text-indigo-300',
+  'MOBA':                         'border-violet-500/40 bg-violet-500/10 text-violet-300',
+  'Point-and-click':              'border-cyan-400/40 bg-cyan-500/10 text-cyan-300',
+  'Hack and slash/Beat \'em up':  'border-rose-500/40 bg-rose-500/10 text-rose-300',
+  'Real Time Strategy (RTS)':     'border-blue-400/40 bg-blue-500/10 text-blue-300',
+  'Turn-based strategy (TBS)':    'border-indigo-400/40 bg-indigo-500/10 text-indigo-300',
 };
-const DEFAULT_BADGE = 'from-slate-500/20 to-slate-600/20 text-slate-300 border-slate-500/20';
+const DEFAULT_BADGE = 'border-slate-400/40 bg-slate-500/10 text-slate-300';
 
 const PLATFORM_COLORS: Record<string, string> = {
-  PC:     'text-sky-400 bg-sky-500/10 border-sky-500/20',
-  PS5:    'text-blue-400 bg-blue-500/10 border-blue-500/20',
-  Switch: 'text-red-400 bg-red-500/10 border-red-500/20',
-  Xbox:   'text-green-400 bg-green-500/10 border-green-500/20',
+  PC:     'text-sky-300 border-sky-400/40 bg-sky-500/10',
+  PS5:    'text-blue-300 border-blue-400/40 bg-blue-500/10',
+  Switch: 'text-alert-300 border-alert-400/40 bg-alert-400/10',
+  Xbox:   'text-pulse-300 border-pulse-400/40 bg-pulse-400/10',
 };
-const DEFAULT_PLATFORM = 'text-slate-400 bg-slate-500/10 border-slate-500/20';
+const DEFAULT_PLATFORM = 'text-slate-300 border-slate-400/40 bg-slate-500/10';
 
 const PlatformIcon = ({ platform }: { platform: string }) => {
   switch (platform) {
-    case 'PC': return <FaWindows size={14} />;
-    case 'PS5': return <FaPlaystation size={14} />;
-    case 'Switch': return <BsNintendoSwitch size={14} />;
-    case 'Xbox': return <FaXbox size={14} />;
-    default: return <span className="text-[10px] font-bold uppercase px-0.5">{platform}</span>;
+    case 'PC': return <FaWindows size={12} />;
+    case 'PS5': return <FaPlaystation size={12} />;
+    case 'Switch': return <BsNintendoSwitch size={12} />;
+    case 'Xbox': return <FaXbox size={12} />;
+    default: return <span className="text-[10px] font-bold uppercase">{platform}</span>;
   }
 };
 
-const STATUS_STYLES: Record<GameStatus, { label: string; emoji: string; cls: string }> = {
-  Backlog:    { label: 'Pendiente',  emoji: '📋', cls: 'text-slate-300 bg-slate-500/10 border-slate-500/20' },
-  Playing:    { label: 'Jugando',    emoji: '🎮', cls: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20' },
-  Completed:  { label: 'Completado', emoji: '✅', cls: 'text-sky-300 bg-sky-500/10 border-sky-500/20' },
-  Platinumed: { label: 'Platinado',  emoji: '🏆', cls: 'text-amber-300 bg-amber-500/10 border-amber-500/25' },
-  Dropped:    { label: 'Abandonado', emoji: '❌', cls: 'text-red-300 bg-red-500/10 border-red-500/20' },
+const STATUS_STYLES: Record<GameStatus, { label: string; tag: string; dot: string }> = {
+  Backlog:    { label: 'PENDING',    tag: 'border-slate-400/40 bg-slate-500/15 text-slate-200',   dot: 'bg-slate-400' },
+  Playing:    { label: 'ACTIVE',     tag: 'border-pulse-400/50 bg-pulse-400/15 text-pulse-300',   dot: 'bg-pulse-400 animate-pulse' },
+  Completed:  { label: 'CLEARED',    tag: 'border-signal-400/50 bg-signal-400/15 text-signal-300', dot: 'bg-signal-400' },
+  Platinumed: { label: 'PLATINUM',   tag: 'border-power-300/60 bg-power-400/20 text-power-200',   dot: 'bg-power-400' },
+  Dropped:    { label: 'ABORTED',    tag: 'border-alert-400/50 bg-alert-500/15 text-alert-300',   dot: 'bg-alert-400' },
 };
 
 function ProfileGameCard({ game, index }: { game: GameSummary; index: number }) {
@@ -73,108 +73,113 @@ function ProfileGameCard({ game, index }: { game: GameSummary; index: number }) 
 
   return (
     <article
-      className={`glass group relative flex flex-col overflow-hidden rounded-2xl transition-all duration-500 hover:-translate-y-2 animate-fade-in ${
-        isPlat 
-          ? 'border-amber-400/60 bg-gradient-to-br from-amber-600/10 via-surface-950/80 to-amber-900/05 shadow-[0_0_30px_rgba(251,191,36,0.1)] ring-1 ring-amber-400/20 hover:border-amber-400 hover:shadow-[0_0_40px_rgba(251,191,36,0.2)]' 
-          : 'border-white/5 hover:border-amber-500/30 hover:shadow-amber-500/10'
+      className={`hud-clip group relative flex flex-col overflow-hidden animate-fade-in transition-all duration-300 hover:-translate-y-1 ${
+        isPlat ? 'hud-panel-bordered hud-panel-power legendary-border' : 'hud-panel-bordered'
       }`}
       style={{ animationDelay: `${index * 50}ms` }}
     >
-      {/* Platinum premium shine effect */}
       {isPlat && (
         <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/10 via-transparent to-amber-400/5 opacity-40" />
-          <div className="absolute inset-y-0 w-48 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-[-20deg] animate-platinum-shine" />
+          <div className="absolute inset-y-0 w-48 bg-gradient-to-r from-transparent via-power-200/30 to-transparent skew-x-[-20deg] animate-platinum-shine" />
         </div>
       )}
 
       <div className="relative aspect-[3/4] w-full overflow-hidden bg-surface-900">
         {game.coverUrl ? (
-          <img 
-            src={game.coverUrl} 
-            alt={game.name}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-          />
+          <>
+            <img src={game.coverUrl} alt={game.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+            <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-void/85 via-void/30 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-void via-void/70 to-transparent" />
+            <div className="absolute inset-0 mix-blend-overlay opacity-30 pointer-events-none"
+              style={{ backgroundImage: 'repeating-linear-gradient(0deg, rgba(0,229,255,0.18) 0 1px, transparent 1px 4px)' }}
+            />
+          </>
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-surface-800 text-surface-400">
-            <Gamepad2 size={48} strokeWidth={1} />
+          <div className="flex h-full w-full items-center justify-center bg-surface-800 text-surface-500">
+            <Gamepad2 size={56} strokeWidth={1.2} />
           </div>
         )}
-        
+
         <div className="absolute top-3 left-3 z-10">
-          <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-bold backdrop-blur-md ${statusStyle.cls.replace('bg-', 'bg-').replace('/10', '/40')}`}>
-            <span className="leading-none">{statusStyle.emoji}</span>
-            {statusStyle.label.toUpperCase()}
+          <span className={`hud-clip-tag inline-flex items-center gap-1.5 border px-2.5 py-1 text-[10px] font-bold tracking-hud font-display backdrop-blur-md ${statusStyle.tag}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${statusStyle.dot}`} />
+            {statusStyle.label}
           </span>
         </div>
 
-        <div className="absolute bottom-3 left-3 z-10 flex gap-1 flex-wrap w-full pr-4">
-          {game.genres && game.genres.slice(0, 3).map((g, idx) => (
-            <span key={idx} className={`inline-flex items-center gap-1.5 rounded-lg border bg-surface-950/40 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${GENRE_GRADIENTS[g] ?? DEFAULT_BADGE}`}>
-              {g}
+        {game.platform && (
+          <div className="absolute top-3 right-3 z-10">
+            <span className={`flex h-7 w-7 items-center justify-center border backdrop-blur-md ${PLATFORM_COLORS[game.platform] ?? DEFAULT_PLATFORM}`}>
+              <PlatformIcon platform={game.platform} />
             </span>
-          ))}
-        </div>
+          </div>
+        )}
+
+        {game.genres && game.genres.length > 0 && (
+          <div className="absolute bottom-3 left-3 right-3 z-10 flex flex-wrap gap-1">
+            {game.genres.slice(0, 3).map((g, idx) => (
+              <span key={idx} className={`inline-flex items-center border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.18em] font-display backdrop-blur-md ${GENRE_COLORS[g] ?? DEFAULT_BADGE}`}>
+                {g}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
-      <div className="relative flex flex-col p-5 z-10">
-
-        <div className="mb-3">
-          <div className="flex items-start justify-between gap-2">
-            <h3 
-              onClick={() => navigate(`/game/${game.igdbId}/${encodeURIComponent(game.name)}`)}
-              className="font-display text-lg font-bold leading-tight text-white transition-colors group-hover:text-amber-300 cursor-pointer hover:underline"
-            >
-              {game.name}
-            </h3>
-            {game.platform && (
-              <span className={`shrink-0 rounded p-1.5 flex items-center justify-center ${PLATFORM_COLORS[game.platform] ?? DEFAULT_PLATFORM}`} title={game.platform}>
-                <PlatformIcon platform={game.platform} />
-              </span>
-            )}
-          </div>
+      <div className="relative flex flex-1 flex-col p-5 z-10">
+        <div className="mb-2 font-mono text-[9px] uppercase tracking-hud text-signal-400/60">
+          // VAULT_ID:{String(game.id).padStart(4, '0')}
         </div>
 
-        <div className="mb-4 grid grid-cols-2 gap-4 border-y border-white/5 py-3">
-          {game.difficultyRating != null && (
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Dificultad</span>
-              <div className="flex items-center gap-1.5">
-                <Star size={12} className="text-amber-400" />
-                <span className="text-sm font-bold text-white">{game.difficultyRating}/10</span>
-              </div>
+        <h3
+          onClick={() => navigate(`/game/${game.igdbId}/${encodeURIComponent(game.name)}`)}
+          className="font-display text-lg font-bold leading-tight text-white mb-3 cursor-pointer transition-colors group-hover:text-signal-300 line-clamp-2"
+        >
+          {game.name}
+        </h3>
+
+        <div className="mb-4 grid grid-cols-2 gap-2 border-y border-signal-400/15 py-3">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[9px] font-bold tracking-hud text-signal-400/70 font-display">DIFFICULTY</span>
+            <div className="flex items-center gap-1.5">
+              <Star size={11} className="text-power-400" fill="currentColor" />
+              <span className="font-mono text-sm font-bold text-white">
+                {game.difficultyRating ?? '--'}<span className="text-slate-500">/10</span>
+              </span>
             </div>
-          )}
-          {game.hoursPlayed != null && (
-            <div className="flex flex-col gap-1 text-right">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Tiempo</span>
-              <div className="flex items-center justify-end gap-1.5">
-                <Clock size={12} className="text-emerald-400" />
-                <span className="text-sm font-bold text-white">{game.hoursPlayed}h</span>
-              </div>
+          </div>
+          <div className="flex flex-col gap-0.5 items-end">
+            <span className="text-[9px] font-bold tracking-hud text-signal-400/70 font-display">PLAYTIME</span>
+            <div className="flex items-center gap-1.5">
+              <Clock size={11} className="text-pulse-400" />
+              <span className="font-mono text-sm font-bold text-white">
+                {game.hoursPlayed != null ? `${game.hoursPlayed}h` : '--'}
+              </span>
             </div>
-          )}
+          </div>
         </div>
 
         {game.review && (
           <div className="mb-4">
-            <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Valoración</span>
-            <p className="text-sm italic text-slate-400 line-clamp-2 border-l-2 border-amber-500/30 pl-3">
-              "{game.review}"
+            <span className="mb-1 block text-[9px] font-bold tracking-hud text-signal-400/70 font-display">// LOG_ENTRY</span>
+            <p className="text-xs italic text-slate-300/90 line-clamp-2 border-l-2 border-signal-400/40 pl-3">
+              {game.review}
             </p>
           </div>
         )}
 
         {game.trophyPercentage != null && (
           <div className="mb-1">
-            <div className="mb-2 flex justify-between text-[10px] font-bold uppercase tracking-wider">
-              <span className="text-slate-500">Trofeos</span>
-              <span className="text-amber-400">{game.trophyPercentage}%</span>
+            <div className="mb-1.5 flex items-baseline justify-between font-mono text-[10px] tracking-hud">
+              <span className="text-signal-400/70 font-display">TROPHY_DATA</span>
+              <span className={`font-bold ${isPlat ? 'text-power-300 text-glow-power' : 'text-signal-300'}`}>
+                {game.trophyPercentage}%
+              </span>
             </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-white/5 shadow-inner">
-              <div 
-                className={`h-full rounded-full transition-all duration-700 shadow-[0_0_8px_rgba(251,191,36,0.3)] ${
-                  isPlat ? 'bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 animate-shimmer' : 'bg-gradient-to-r from-amber-500 to-yellow-400'
+            <div className="relative h-1.5 w-full overflow-hidden bg-surface-800 border border-signal-400/15">
+              <div
+                className={`h-full transition-all duration-700 ${
+                  isPlat ? 'bg-gradient-to-r from-power-400 via-power-200 to-power-400 animate-shimmer' : 'bg-gradient-to-r from-signal-500 to-signal-300'
                 }`}
                 style={{ width: `${game.trophyPercentage}%` }}
               />
@@ -185,8 +190,6 @@ function ProfileGameCard({ game, index }: { game: GameSummary; index: number }) 
     </article>
   );
 }
-
-import { useNavigate } from 'react-router-dom';
 
 export function ProfilePage() {
   const { username } = useParams<{ username: string }>();
@@ -199,27 +202,27 @@ export function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-surface-900">
-        <Loader2 size={40} className="animate-spin text-amber-500" />
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="hud-clip hud-panel-bordered px-8 py-6 flex items-center gap-3">
+          <Loader2 size={22} className="animate-spin text-signal-400" />
+          <span className="font-mono text-xs uppercase tracking-hud text-signal-300">// LOADING_HUNTER_DATA...</span>
+        </div>
       </div>
     );
   }
 
   if (isError || !profile) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-surface-900 px-6">
-        <div className="glass rounded-3xl p-10 text-center animate-scale-in max-w-md">
-          <SearchX size={48} className="mx-auto mb-4 text-slate-500" />
-          <h2 className="font-display text-2xl font-bold text-white mb-2">Hunter No Encontrado</h2>
-          <p className="text-slate-400 mb-6">
-            El hunter <span className="text-amber-400 font-semibold">"{username}"</span> no existe.
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 px-6">
+        <div className="hud-clip hud-panel-bordered hud-panel-alert p-10 text-center animate-scale-in max-w-md">
+          <SearchX size={44} className="mx-auto mb-4 text-alert-400" />
+          <h2 className="font-display text-2xl font-bold text-white mb-2 tracking-wide">HUNTER NOT FOUND</h2>
+          <p className="font-mono text-xs uppercase tracking-hud text-slate-400 mb-1">// HANDLE_404</p>
+          <p className="text-slate-300 mb-6">
+            El hunter <span className="text-alert-300 font-semibold">"{username}"</span> no existe en esta vault.
           </p>
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-amber-500/25 transition-all hover:scale-105"
-          >
-            <ArrowLeft size={16} />
-            Volver al inicio
+          <Link to="/" className="hud-clip-sm hud-cta inline-flex items-center gap-2 px-6 py-2.5 text-xs">
+            <ArrowLeft size={14} /> VOLVER_AL_INICIO
           </Link>
         </div>
       </div>
@@ -230,9 +233,7 @@ export function ProfilePage() {
 
   const genreCounts: Record<string, number> = {};
   currentProfile.games.forEach((g: GameSummary) => {
-    g.genres?.forEach(genre => {
-      genreCounts[genre] = (genreCounts[genre] || 0) + 1;
-    });
+    g.genres?.forEach(genre => { genreCounts[genre] = (genreCounts[genre] || 0) + 1; });
   });
   const topGenre = Object.entries(genreCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '—';
   const platinumedCount = currentProfile.games.filter((g: GameSummary) => g.status === 'Platinumed').length;
@@ -242,11 +243,11 @@ export function ProfilePage() {
     : '—';
 
   const getRankInfo = (level: number) => {
-    if (level >= 100) return { name: 'Master Hunter', color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/30', glow: 'shadow-red-500/20' };
-    if (level >= 40) return { name: 'Platinum', color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/30', glow: 'shadow-cyan-500/20' };
-    if (level >= 20) return { name: 'Oro', color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30', glow: 'shadow-amber-500/20' };
-    if (level >= 10) return { name: 'Plata', color: 'text-slate-300', bg: 'bg-slate-400/10', border: 'border-slate-400/30', glow: 'shadow-slate-400/20' };
-    return { name: 'Bronce', color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/30', glow: 'shadow-orange-500/20' };
+    if (level >= 100) return { name: 'MASTER',   color: 'text-alert-300',  ring: 'rgba(255, 58, 120, 0.6)',  glowClass: 'glow-alert' };
+    if (level >= 40)  return { name: 'PLATINUM', color: 'text-signal-300', ring: 'rgba(0, 229, 255, 0.6)',   glowClass: 'glow-signal' };
+    if (level >= 20)  return { name: 'GOLD',     color: 'text-power-300',  ring: 'rgba(255, 170, 26, 0.6)',  glowClass: 'glow-power' };
+    if (level >= 10)  return { name: 'SILVER',   color: 'text-slate-200',  ring: 'rgba(203, 213, 225, 0.6)', glowClass: '' };
+    return                  { name: 'BRONZE',   color: 'text-orange-300', ring: 'rgba(251, 146, 60, 0.6)',  glowClass: '' };
   };
 
   const rank = getRankInfo(currentProfile.level);
@@ -256,118 +257,169 @@ export function ProfilePage() {
   const progressPercent = Math.min(100, Math.max(0, (xpInCurrentLevel / xpNeededForNextLevel) * 100));
 
   return (
-    <div className="min-h-screen bg-surface-900">
-      <header className="sticky top-0 z-40 w-full border-b border-white/5 bg-surface-950/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-yellow-600 shadow-lg shadow-amber-500/25">
-              <Trophy size={20} className="text-white" />
+    <div className="min-h-screen">
+      {/* HEADER */}
+      <header className="sticky top-0 z-40 w-full border-b border-signal-400/15 bg-void/80 backdrop-blur-xl">
+        <div className="h-0.5 w-full bg-gradient-to-r from-transparent via-signal-400 to-transparent opacity-60" />
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
+          <Link to="/" className="group flex items-center gap-3">
+            <div className="hud-clip-sm flex h-11 w-11 items-center justify-center bg-gradient-to-br from-signal-400 to-signal-600 glow-signal">
+              <Crosshair size={20} className="text-void" strokeWidth={2.5} />
             </div>
-            <span className="font-display text-xl font-bold tracking-tight text-white">
-              Hunter<span className="bg-gradient-to-r from-amber-400 to-yellow-400 bg-clip-text text-transparent">Vault</span>
-            </span>
+            <div className="leading-tight">
+              <div className="font-display text-xl font-bold tracking-tight text-white">
+                HUNTER<span className="text-signal-400 text-glow-signal">/</span>
+                <span className="bg-gradient-to-r from-power-300 to-power-500 bg-clip-text text-transparent">VAULT</span>
+              </div>
+              <div className="font-mono text-[9px] uppercase tracking-hud text-signal-400/70">
+                // HUNTER_PROFILE · PUBLIC_VIEW
+              </div>
+            </div>
           </Link>
-          <div className="flex items-center gap-3">
-            <Link
-              to="/"
-              className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300 transition-all hover:border-amber-500/30 hover:bg-amber-500/10 hover:text-white"
-            >
-              <ArrowLeft size={16} />
-              Volver
-            </Link>
-          </div>
+          <Link
+            to="/"
+            className="hud-clip-sm hud-btn-ghost flex items-center gap-2 px-4 py-2 text-[11px]"
+          >
+            <ArrowLeft size={13} />
+            VOLVER
+          </Link>
         </div>
       </header>
 
       <main className="mx-auto max-w-7xl px-6 py-8">
-        <div className="glass relative overflow-hidden rounded-3xl mb-8 animate-fade-in group/hero">
-          <div className="absolute inset-0 h-48 w-full bg-surface-950 group-hover/hero:opacity-90 transition-opacity">
+        {/* HERO PANEL */}
+        <div className="hud-clip hud-panel-bordered relative overflow-hidden mb-8 animate-fade-in">
+          {/* Banner */}
+          <div className="absolute inset-0 h-56 w-full">
             {currentProfile.bannerUrl ? (
-              <div className="relative h-full w-full">
-                <img 
-                  src={currentProfile.bannerUrl} 
-                  alt="Banner" 
-                  className="h-full w-full object-cover" 
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-surface-950 via-surface-950/40 to-transparent" />
-              </div>
+              <>
+                <img src={currentProfile.bannerUrl} alt="Banner" className="h-full w-full object-cover opacity-50" />
+                <div className="absolute inset-0 bg-gradient-to-t from-void via-void/70 to-void/30" />
+              </>
             ) : (
-              <div className="h-full w-full bg-gradient-to-br from-amber-600/20 via-transparent to-yellow-600/10" />
+              <div className="h-full w-full bg-gradient-to-br from-signal-500/20 via-power-500/10 to-alert-500/10" />
             )}
+            {/* Hex overlay */}
+            <div className="absolute inset-0 opacity-20"
+              style={{
+                backgroundImage: `linear-gradient(transparent 95%, rgba(0, 229, 255, 0.3) 95%),
+                                  repeating-linear-gradient(90deg, transparent 0 39px, rgba(0, 229, 255, 0.2) 39px 40px)`,
+                backgroundSize: '100% 4px, 40px 40px',
+              }}
+            />
           </div>
-          
-          <div className="relative pt-32 p-8 flex flex-col items-center sm:items-end sm:flex-row gap-8">
-            <div className="relative group/avatar shrink-0">
-              <div className={`flex h-32 w-32 items-center justify-center rounded-3xl border-4 border-surface-900 overflow-hidden bg-surface-800 shadow-2xl transition-transform duration-500 group-hover/avatar:scale-105`}>
+
+          {/* HUD frame label */}
+          <div className="relative flex items-center gap-3 px-8 pt-6">
+            <span className="font-mono text-[10px] uppercase tracking-hud text-signal-400/80">
+              // HUNTER_PROFILE_v2 · LIVE_DATA
+            </span>
+            <div className="h-px flex-1 bg-signal-400/30" />
+            <span className="font-mono text-[10px] uppercase tracking-hud text-signal-400/80 animate-data-blink">
+              ● ONLINE
+            </span>
+          </div>
+
+          {/* Avatar + identity */}
+          <div className="relative flex flex-col items-center gap-6 pt-24 px-8 pb-6 sm:flex-row sm:items-end">
+            {/* Power-core avatar */}
+            <div className="relative shrink-0">
+              <svg className="absolute -inset-3 animate-ring-spin" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="48" fill="none" stroke={rank.ring} strokeWidth="0.6" strokeDasharray="2 6" />
+              </svg>
+              <div className={`hud-clip relative flex h-32 w-32 items-center justify-center border-2 border-signal-400/40 overflow-hidden bg-surface-900 ${rank.glowClass}`}>
                 {currentProfile.avatarUrl ? (
                   <img src={currentProfile.avatarUrl} alt={currentProfile.username} className="h-full w-full object-cover" />
                 ) : (
-                  <UserIcon size={64} className="text-surface-600" />
+                  <UserIcon size={64} className="text-surface-500" />
                 )}
               </div>
-              <div className={`absolute -bottom-2 -right-2 rounded-xl border-2 border-surface-900 ${rank.bg.replace('/10', '/100')} ${rank.color} px-3 py-1 text-xs font-black shadow-xl`}>
+              <div className={`hud-clip-sm absolute -bottom-2 -right-2 border border-void bg-void px-3 py-1 font-display text-xs font-black tracking-hud ${rank.color}`}>
                 LVL {currentProfile.level}
               </div>
             </div>
 
+            {/* Identity */}
             <div className="flex-1 text-center sm:text-left">
-              <div className="mb-4">
-                <h1 className="font-display text-4xl font-black text-white mb-2 tracking-tight">
-                  {currentProfile.username}
-                </h1>
-                <p className={`text-sm font-bold uppercase tracking-widest flex items-center justify-center sm:justify-start gap-2 ${rank.color}`}>
-                  <Award size={16} />
-                  RANGO {rank.name}
-                </p>
-              </div>
-
-              <div className="max-w-2xl">
-                <p className="text-slate-300 leading-relaxed text-sm lg:text-base italic">
-                  {currentProfile.bio || "Este cazador todavía no ha escrito su biografía estratégica."}
+              <h1 className="font-display text-4xl lg:text-5xl font-black text-white tracking-tight leading-none mb-2">
+                {currentProfile.username}
+              </h1>
+              <p className={`flex items-center justify-center sm:justify-start gap-2 font-display text-xs font-bold uppercase tracking-hud ${rank.color}`}>
+                <Award size={13} />
+                RANK_{rank.name}
+                <span className="font-mono text-slate-500">// {currentProfile.level >= 100 ? 'TIER_S' : currentProfile.level >= 40 ? 'TIER_A' : currentProfile.level >= 20 ? 'TIER_B' : currentProfile.level >= 10 ? 'TIER_C' : 'TIER_D'}</span>
+              </p>
+              <div className="mt-3 max-w-2xl">
+                <p className="text-slate-300 leading-relaxed text-sm italic">
+                  {currentProfile.bio || '// Este hunter no ha registrado su biografía estratégica.'}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="relative px-8 pb-8">
-            <div className="max-w-full">
-              <div className="mb-2 flex justify-between text-[11px] font-bold uppercase tracking-wider">
-                <span className="text-slate-500">Progreso de Nivel</span>
-                <span className="text-white">{currentProfile.totalXp.toLocaleString()} / {currentProfile.nextLevelXp.toLocaleString()} XP</span>
-              </div>
-              <div className="h-3 w-full overflow-hidden rounded-full bg-white/5 border border-white/5 shadow-inner p-0.5">
-                <div 
-                  className={`h-full rounded-full transition-all duration-1000 shadow-lg bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer`}
-                  style={{ width: `${progressPercent}%`, backgroundColor: 'currentColor', color: rank.color.replace('text-', '') }}
-                />
-              </div>
+          {/* XP bar */}
+          <div className="relative px-8 pb-6">
+            <div className="mb-2 flex items-baseline justify-between font-mono text-[10px] uppercase tracking-hud">
+              <span className="flex items-center gap-2 text-signal-400/80">
+                <Zap size={11} className="text-power-400" />
+                POWER_CORE_PROGRESS
+              </span>
+              <span className="text-white">
+                <span className="text-power-300 text-glow-power font-bold">{currentProfile.totalXp.toLocaleString()}</span>
+                <span className="text-slate-500"> / {currentProfile.nextLevelXp.toLocaleString()} XP</span>
+              </span>
+            </div>
+            <div className="relative h-3 w-full overflow-hidden border border-signal-400/20 bg-void/60 hud-clip-sm">
+              <div
+                className="h-full bg-gradient-to-r from-power-400 via-power-200 to-power-400 animate-shimmer transition-all duration-1000"
+                style={{ width: `${progressPercent}%`, backgroundSize: '400px 100%' }}
+              />
+              {/* Tick marks */}
+              <div className="absolute inset-0 pointer-events-none"
+                style={{ backgroundImage: 'repeating-linear-gradient(90deg, transparent 0 calc(10% - 1px), rgba(0,0,0,0.5) calc(10% - 1px) 10%)' }}
+              />
+            </div>
+            <div className="mt-1 font-mono text-[9px] tracking-hud text-slate-500">
+              // {progressPercent.toFixed(1)}% al siguiente nivel
             </div>
 
-            <div className="relative mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {/* Stats grid */}
+            <div className="relative mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
               {[
-                { label: 'Hunts Totales', value: currentProfile.totalGames, icon: Gamepad2, color: 'text-violet-400' },
-                { label: 'Género Predilecto', value: topGenre, icon: Award, color: 'text-emerald-400' },
-                { label: 'Títulos Platinados', value: platinumedCount, icon: Trophy, color: 'text-amber-400' },
-                { label: 'Dificultad Media', value: avgRating, icon: Star, color: 'text-sky-400' },
+                { label: 'TOTAL_HUNTS',     value: currentProfile.totalGames, icon: Gamepad2, accent: 'text-signal-300', border: 'border-signal-400/30' },
+                { label: 'GENRE_AFFINITY', value: topGenre,                   icon: Shield,   accent: 'text-pulse-300',  border: 'border-pulse-400/30' },
+                { label: 'PLATINUMS',       value: platinumedCount,            icon: Trophy,   accent: 'text-power-300',  border: 'border-power-300/30' },
+                { label: 'AVG_DIFFICULTY',  value: avgRating,                  icon: Star,     accent: 'text-alert-300',  border: 'border-alert-400/30' },
               ].map(stat => (
-                <div key={stat.label} className="flex flex-col items-center gap-1 rounded-2xl bg-white/[0.03] border border-white/5 px-4 py-4 transition-colors hover:bg-white/[0.05]">
-                  <stat.icon size={18} className={`${stat.color} mb-1`} />
+                <div key={stat.label} className={`hud-clip-sm flex flex-col items-center gap-1 border bg-void/40 px-4 py-3 transition-colors hover:bg-signal-400/5 ${stat.border}`}>
+                  <stat.icon size={16} className={`${stat.accent} mb-1`} />
                   <span className="font-display text-2xl font-black text-white">{stat.value}</span>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{stat.label}</span>
+                  <span className="font-mono text-[9px] font-bold uppercase tracking-hud text-slate-500">{stat.label}</span>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
+        {/* Section divider */}
+        <div className="mb-6 flex items-center gap-3">
+          <div className="hud-stripes h-3 w-12 hud-clip-sm" />
+          <span className="font-mono text-[10px] uppercase tracking-hud text-signal-400/60">
+            HUNTER.VAULT_INVENTORY [{currentProfile.games.length}]
+          </span>
+          <div className="h-px flex-1 bg-signal-400/15" />
+        </div>
+
         {currentProfile.games.length === 0 ? (
-          <div className="glass rounded-3xl p-12 text-center animate-fade-in">
-            <Trophy size={48} className="mx-auto mb-4 text-slate-600" />
-            <h2 className="font-display text-xl font-bold text-white mb-2">Sin Hunts Registrados</h2>
-            <p className="text-slate-400">Este cazador todavía no ha registrado ningún trophy hunt.</p>
+          <div className="hud-clip hud-panel-bordered p-12 text-center animate-fade-in">
+            <Trophy size={42} className="mx-auto mb-4 text-slate-600" />
+            <h2 className="font-display text-xl font-bold text-white mb-2 tracking-wide">VAULT_VACÍA</h2>
+            <p className="font-mono text-xs uppercase tracking-hud text-slate-500">
+              // ESTE_HUNTER_NO_HA_REGISTRADO_HUNTS
+            </p>
           </div>
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {currentProfile.games.map((game: GameSummary, i: number) => (
               <ProfileGameCard key={game.id} game={game} index={i} />
             ))}

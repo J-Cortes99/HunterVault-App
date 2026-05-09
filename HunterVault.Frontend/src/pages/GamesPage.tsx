@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Search, Trophy, Gamepad2, Clock, ListFilter, ChevronDown, Zap, Users } from 'lucide-react';
+import { Search, Trophy, Gamepad2, Clock, ListFilter, Zap, Users, Info } from 'lucide-react';
 import type { GameSummary, GameDetails, CreateGamePayload, GameStatus, UpdateProfilePayload } from '../types';
 import { GAME_STATUSES } from '../types';
 import { gamesApi } from '../api/games';
@@ -26,13 +26,13 @@ type ModalState =
 
 type StatusFilter = 'All' | GameStatus;
 
-const STATUS_TABS: { value: StatusFilter; emoji: string; label: string }[] = [
-  { value: 'All',        emoji: '🎯', label: 'Todos'      },
-  { value: 'Backlog',    emoji: '📋', label: 'Pendiente'  },
-  { value: 'Playing',   emoji: '🎮', label: 'Jugando'    },
-  { value: 'Completed', emoji: '✅', label: 'Completado' },
-  { value: 'Platinumed',emoji: '🏆', label: 'Platinado'  },
-  { value: 'Dropped',   emoji: '❌', label: 'Abandonado' },
+const STATUS_TABS: { value: StatusFilter; label: string; dot: string }[] = [
+  { value: 'All',         label: 'TODOS',      dot: 'bg-signal-400' },
+  { value: 'Backlog',     label: 'PENDING',    dot: 'bg-slate-400' },
+  { value: 'Playing',     label: 'ACTIVE',     dot: 'bg-pulse-400 animate-pulse' },
+  { value: 'Completed',   label: 'CLEARED',    dot: 'bg-signal-400' },
+  { value: 'Platinumed',  label: 'PLATINUM',   dot: 'bg-power-400' },
+  { value: 'Dropped',     label: 'ABORTED',    dot: 'bg-alert-400' },
 ];
 
 type SortOption = 'recent' | 'percent-desc' | 'percent-asc' | 'diff-desc' | 'diff-asc' | 'hours-desc';
@@ -246,10 +246,21 @@ export function GamesPage() {
   }, [games]);
 
   /* ─── Render ─── */
+  const STAT_CARDS = [
+    { key: 'games', label: 'JUEGOS', code: 'VAULT.SIZE',     value: games.length,                              icon: Gamepad2, glow: 'glow-signal',  accent: 'text-signal-300', border: 'border-signal-400/40' },
+    { key: 'level', label: 'NIVEL',  code: 'HUNTER.RANK',    value: profile?.level ?? 1,                       icon: Trophy,   glow: 'glow-power',   accent: 'text-power-300',  border: 'border-power-300/40', extra: true },
+    { key: 'xp',    label: 'XP',     code: 'POWER.CORE',     value: (profile?.totalXp ?? 0).toLocaleString(),  icon: Zap,      glow: 'glow-power',   accent: 'text-power-300',  border: 'border-power-300/40' },
+    { key: 'hours', label: 'HORAS',  code: 'PLAYTIME.LOG',   value: `${totalHours}h`,                           icon: Clock,    glow: 'glow-pulse',   accent: 'text-pulse-300',  border: 'border-pulse-400/40' },
+  ];
+
+  const xpProgressPct = profile && profile.nextLevelXp > 0
+    ? Math.min(100, Math.max(0, (profile.totalXp / profile.nextLevelXp) * 100))
+    : 0;
+
   return (
-    <div className="min-h-screen bg-surface-900">
-      <Header 
-        onAddGame={() => setModal({ type: 'create' })} 
+    <div className="min-h-screen">
+      <Header
+        onAddGame={() => setModal({ type: 'create' })}
         onEditProfile={() => setIsProfileEditModalOpen(true)}
       />
 
@@ -257,122 +268,138 @@ export function GamesPage() {
 
       <main className={`mx-auto max-w-7xl px-6 py-8 transition-all duration-300 ${isSocialOpen ? 'mr-80' : ''}`}>
 
-        {/* Stats bar */}
-        <div className="mb-8 grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { label: 'Juegos', value: games.length, icon: Gamepad2, color: 'text-violet-400' },
-            { 
-              label: 'Nivel Actual', 
-              value: profile?.level ?? 1, 
-              icon: Trophy, 
-              color: 'text-amber-400',
-              extra: (
-                <button 
-                  onClick={() => setIsXpInfoModalOpen(true)}
-                  className="ml-1 rounded-full p-0.5 hover:bg-white/10 transition-colors text-slate-500 hover:text-amber-500"
-                  title="Ver sistema de XP"
-                >
-                  <Search size={12} />
-                </button>
-              )
-            },
-            { 
-              label: 'XP Total', 
-              value: profile?.totalXp?.toLocaleString() ?? 0, 
-              icon: Zap, 
-              color: 'text-yellow-400' 
-            },
-            { label: 'Horas Totales', value: `${totalHours}h`, icon: Clock, color: 'text-emerald-400' },
-          ].map(stat => (
-            <div key={stat.label} className="glass flex items-center gap-4 rounded-2xl px-5 py-4 animate-fade-in transition-transform hover:scale-[1.02]">
-              <div className={`rounded-xl bg-white/5 p-2.5 ${stat.color}`}>
-                <stat.icon size={18} />
+        {/* HUD section header */}
+        <div className="mb-6 flex items-center gap-3 font-mono text-[10px] uppercase tracking-hud text-signal-400/80">
+          <span className="h-px w-8 bg-signal-400/60" />
+          <span className="flex items-center gap-2">
+            <span className="h-1.5 w-1.5 rounded-full bg-pulse-400 animate-pulse" />
+            VAULT_DASHBOARD · {user?.username?.toUpperCase() ?? 'HUNTER'}
+          </span>
+          <span className="h-px flex-1 bg-signal-400/20" />
+        </div>
+
+        {/* Stats grid */}
+        <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {STAT_CARDS.map((stat, i) => (
+            <div
+              key={stat.key}
+              className={`hud-clip hud-panel-bordered relative overflow-hidden p-4 animate-fade-in transition-transform hover:-translate-y-1 ${stat.border}`}
+              style={{ animationDelay: `${i * 60}ms` }}
+            >
+              <div className="flex items-start justify-between mb-3">
+                <span className="font-mono text-[9px] uppercase tracking-hud text-signal-400/70">// {stat.code}</span>
+                <stat.icon size={14} className={stat.accent} />
               </div>
-              <div>
-                <div className="flex items-center">
-                  <p className="text-xl font-bold text-white">{stat.value}</p>
-                  {stat.extra}
+              <div className="flex items-end gap-2">
+                <p className={`font-display text-3xl font-bold leading-none text-white ${stat.glow ? '' : ''}`}>
+                  {stat.value}
+                </p>
+                {stat.extra && (
+                  <button
+                    onClick={() => setIsXpInfoModalOpen(true)}
+                    className="mb-1 text-signal-400/60 transition-colors hover:text-signal-300"
+                    title="Sistema de XP"
+                  >
+                    <Info size={13} />
+                  </button>
+                )}
+              </div>
+              <p className="mt-1 font-display text-[10px] font-bold uppercase tracking-hud text-slate-400">{stat.label}</p>
+
+              {/* XP progress bar inside the LEVEL card */}
+              {stat.key === 'level' && profile && (
+                <div className="mt-3">
+                  <div className="relative h-1 w-full overflow-hidden bg-surface-800 border border-power-300/15">
+                    <div
+                      className="h-full bg-gradient-to-r from-power-400 to-power-200 transition-all duration-700"
+                      style={{ width: `${xpProgressPct}%` }}
+                    />
+                  </div>
+                  <div className="mt-1 flex justify-between font-mono text-[8px] tracking-hud text-slate-500">
+                    <span>{profile.totalXp.toLocaleString()}</span>
+                    <span>/{profile.nextLevelXp.toLocaleString()} XP</span>
+                  </div>
                 </div>
-                <p className="text-xs text-slate-500">{stat.label}</p>
-              </div>
+              )}
             </div>
           ))}
         </div>
 
-
         {/* Status filter tabs */}
-        <div className="mb-6 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-          {STATUS_TABS.map(tab => (
-            <button
-              key={tab.value}
-              onClick={() => setStatus(tab.value)}
-              className={`flex shrink-0 items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-medium transition-all ${
-                statusFilter === tab.value
-                  ? 'border-amber-500/50 bg-amber-500/15 text-amber-300'
-                  : 'border-white/8 bg-white/4 text-slate-400 hover:bg-white/8 hover:text-slate-200'
-              }`}
-            >
-              <span className="text-base leading-none">{tab.emoji}</span>
-              {tab.label}
-              <span className={`ml-0.5 rounded-md px-1.5 py-0.5 text-xs font-bold ${
-                statusFilter === tab.value ? 'bg-amber-500/20 text-amber-200' : 'bg-white/6 text-slate-500'
-              }`}>
-                {countByStatus[tab.value] ?? 0}
-              </span>
-            </button>
-          ))}
+        <div className="mb-5 flex items-center gap-2">
+          <span className="hidden font-mono text-[10px] uppercase tracking-hud text-signal-400/70 sm:block">// FILTRO</span>
+          <div className="flex flex-1 gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+            {STATUS_TABS.map(tab => (
+              <button
+                key={tab.value}
+                onClick={() => setStatus(tab.value)}
+                className={`hud-clip-sm group/tab flex shrink-0 items-center gap-2 border px-3.5 py-2 font-display text-[11px] font-bold uppercase tracking-hud transition-all
+                  ${statusFilter === tab.value
+                    ? 'border-signal-400/70 bg-signal-400/15 text-signal-200 glow-signal'
+                    : 'border-signal-400/15 bg-void/40 text-slate-400 hover:border-signal-400/40 hover:text-slate-100 hover:bg-signal-400/5'
+                  }`}
+              >
+                <span className={`h-1.5 w-1.5 rounded-full ${tab.dot}`} />
+                {tab.label}
+                <span className={`font-mono text-[10px] tracking-normal ${statusFilter === tab.value ? 'text-signal-300' : 'text-slate-500 group-hover/tab:text-slate-300'}`}>
+                  [{countByStatus[tab.value] ?? 0}]
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Toolbar */}
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          {/* Search */}
-          <div className="relative">
-            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative w-full sm:w-72">
+            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-signal-400/60 pointer-events-none" />
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Buscar juegos…"
-              className="w-64 rounded-xl border border-white/10 bg-white/5 py-2 pl-9 pr-4 text-sm text-white placeholder-slate-500 outline-none transition-colors focus:border-amber-500 focus:ring-1 focus:ring-amber-500/50"
+              placeholder="QUERY > buscar título…"
+              className="hud-input hud-clip-sm w-full py-2.5 pl-10 pr-4 text-sm"
             />
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Social toggle */}
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setIsSocialOpen(!isSocialOpen)}
-              className={`flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-medium transition-all ${
-                isSocialOpen 
-                  ? 'border-amber-500 bg-amber-500/10 text-amber-500' 
-                  : 'border-white/10 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200'
-              }`}
+              className={`hud-clip-sm flex h-10 items-center gap-2 border px-4 font-display text-[11px] font-bold uppercase tracking-hud transition-all
+                ${isSocialOpen
+                  ? 'border-signal-400/70 bg-signal-400/15 text-signal-200 glow-signal'
+                  : 'border-signal-400/20 bg-signal-400/5 text-slate-400 hover:border-signal-400/50 hover:text-signal-300'
+                }`}
             >
-              <Users size={16} />
-              <span className="hidden sm:inline">Comunidad</span>
+              <Users size={14} />
+              <span className="hidden sm:inline">COMMS</span>
             </button>
 
-            {/* Sort Filter */}
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 text-xs text-slate-500 mr-1">
-                <ListFilter size={13} />
-                <span>Ordenar por</span>
-              </div>
-              <div className="relative">
-                <select
-                  value={sortOption}
-                  onChange={(e) => setSortOption(e.target.value as SortOption)}
-                  className="rounded-xl border border-white/10 bg-white/5 py-2 pl-3 pr-8 text-sm text-white outline-none appearance-none cursor-pointer focus:border-amber-500 hover:bg-white/10 transition-colors"
-                >
-                  {SORT_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value} className="bg-[#1e1e38]">
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              </div>
+            <div className="hud-clip-sm flex items-center gap-2 border border-signal-400/20 bg-signal-400/5 pl-3">
+              <ListFilter size={13} className="text-signal-400/70" />
+              <span className="font-display text-[10px] font-bold uppercase tracking-hud text-signal-400/70">SORT</span>
+              <select
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value as SortOption)}
+                className="hud-input border-0 bg-transparent !shadow-none py-2.5 pl-1 pr-8 font-display text-[11px] font-semibold uppercase tracking-hud text-white"
+              >
+                {SORT_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value} className="bg-surface-900 normal-case font-sans">
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
+        </div>
+
+        {/* Section divider — diagonal stripes */}
+        <div className="mb-6 flex items-center gap-3">
+          <div className="hud-stripes h-3 w-12 hud-clip-sm" />
+          <span className="font-mono text-[10px] uppercase tracking-hud text-signal-400/60">
+            VAULT.GAMES [{filteredAndSorted.length} / {games.length}]
+          </span>
+          <div className="h-px flex-1 bg-signal-400/15" />
         </div>
 
         {/* Grid */}

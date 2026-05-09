@@ -45,11 +45,16 @@ function handleActivityEvent(
     icon,
     duration: 4000,
     style: {
-      background: '#0f172a',
-      color: '#fff',
-      border: '1px solid rgba(251, 191, 36, 0.2)',
-      fontSize: '0.85rem',
-      fontWeight: '500',
+      background: 'rgba(6, 10, 22, 0.96)',
+      color: '#e6efff',
+      border: '1px solid rgba(0, 229, 255, 0.35)',
+      borderRadius: '0',
+      clipPath: 'polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)',
+      fontSize: '0.82rem',
+      fontFamily: '"Rajdhani", sans-serif',
+      fontWeight: 600,
+      letterSpacing: '0.02em',
+      boxShadow: '0 0 22px -4px rgba(0, 229, 255, 0.45)',
     },
   });
 }
@@ -116,7 +121,12 @@ function AppContent() {
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <Loader2 size={40} className="animate-spin text-violet-500" />
+        <div className="hud-clip hud-panel-bordered px-8 py-6 flex items-center gap-3">
+          <Loader2 size={22} className="animate-spin text-signal-400" />
+          <span className="font-mono text-xs uppercase tracking-[0.22em] text-signal-300">
+            // BOOTING_VAULT...
+          </span>
+        </div>
       </div>
     );
   }
@@ -140,14 +150,19 @@ export function App() {
             position="bottom-right"
             toastOptions={{
               style: {
-                background: '#1e293b',
-                color: '#f8fafc',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: '12px',
-                fontSize: '14px',
+                background: 'rgba(6, 10, 22, 0.96)',
+                color: '#e6efff',
+                border: '1px solid rgba(0, 229, 255, 0.35)',
+                borderRadius: '0',
+                clipPath: 'polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)',
+                fontSize: '13px',
+                fontFamily: '"Rajdhani", sans-serif',
+                fontWeight: 600,
+                letterSpacing: '0.02em',
+                boxShadow: '0 0 22px -4px rgba(0, 229, 255, 0.4)',
               },
-              success: { iconTheme: { primary: '#f59e0b', secondary: '#1e293b' } },
-              error:   { iconTheme: { primary: '#f87171', secondary: '#1e293b' } },
+              success: { iconTheme: { primary: '#00e5ff', secondary: '#04070f' } },
+              error:   { iconTheme: { primary: '#ff3a78', secondary: '#04070f' } },
             }}
           />
           <ReactQueryDevtools initialIsOpen={false} />

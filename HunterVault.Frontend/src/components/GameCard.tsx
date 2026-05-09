@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Clock, Edit2, Star, Trash2, Monitor } from 'lucide-react';
+import { Clock, Pencil, Star, Trash2, Gamepad, Trophy } from 'lucide-react';
 import { FaWindows, FaPlaystation, FaXbox } from 'react-icons/fa6';
 import { BsNintendoSwitch } from 'react-icons/bs';
 import type { GameSummary, GameStatus } from '../types';
@@ -10,64 +10,62 @@ interface GameCardProps {
   onDelete: (game: GameSummary) => void;
 }
 
-const GENRE_GRADIENTS: Record<string, string> = {
-  'Action': 'from-red-500/20 to-orange-500/20 text-orange-300 border-orange-500/20',
-  'Adventure': 'from-green-500/20 to-teal-500/20 text-teal-300 border-teal-500/20',
-  'RPG': 'from-purple-500/20 to-violet-500/20 text-violet-300 border-violet-500/20',
-  'Role-playing (RPG)': 'from-purple-500/20 to-violet-500/20 text-violet-300 border-violet-500/20',
-  'Strategy': 'from-blue-500/20 to-cyan-500/20 text-cyan-300 border-cyan-500/20',
-  'Shooter': 'from-orange-500/20 to-red-600/20 text-orange-400 border-red-500/20',
-  'Music': 'from-pink-500/20 to-rose-400/20 text-pink-300 border-rose-500/20',
-  'Platform': 'from-sky-400/20 to-blue-500/20 text-sky-300 border-sky-400/20',
-  'Sports': 'from-yellow-500/20 to-lime-500/20 text-lime-300 border-lime-500/20',
-  'Sport': 'from-yellow-500/20 to-lime-500/20 text-lime-300 border-lime-500/20',
-  'Horror': 'from-red-900/30 to-rose-700/20 text-rose-300 border-rose-500/20',
-  'Simulation': 'from-sky-500/20 to-blue-500/20 text-sky-300 border-sky-500/20',
-  'Simulator': 'from-sky-500/20 to-blue-500/20 text-sky-300 border-sky-500/20',
-  'Fighting': 'from-orange-600/20 to-red-600/20 text-red-300 border-red-500/20',
-  'Racing': 'from-amber-500/20 to-yellow-500/20 text-amber-300 border-amber-500/20',
-  'Puzzle': 'from-pink-500/20 to-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/20',
-  'Indie': 'from-amber-400/20 to-yellow-600/20 text-amber-200 border-amber-400/20',
-  'Arcade': 'from-cyan-400/20 to-fuchsia-500/20 text-cyan-200 border-cyan-400/20',
-  'Visual Novel': 'from-fuchsia-400/20 to-purple-500/20 text-fuchsia-300 border-purple-400/20',
-  'Card & Board Game': 'from-emerald-600/20 to-teal-500/20 text-emerald-300 border-emerald-500/20',
-  'Tactical': 'from-indigo-500/20 to-blue-700/20 text-indigo-300 border-indigo-500/20',
-  'MOBA': 'from-violet-600/20 to-purple-700/20 text-violet-300 border-violet-500/20',
-  'Point-and-click': 'from-cyan-500/20 to-teal-600/20 text-cyan-300 border-teal-500/20',
-  'Hack and slash/Beat \'em up': 'from-rose-600/20 to-red-700/20 text-rose-300 border-red-600/20',
-  'Real Time Strategy (RTS)': 'from-blue-600/20 to-cyan-700/20 text-blue-200 border-blue-500/20',
-  'Turn-based strategy (TBS)': 'from-indigo-600/20 to-violet-700/20 text-indigo-200 border-indigo-500/20',
+const GENRE_COLORS: Record<string, string> = {
+  'Action':                       'border-alert-400/40 bg-alert-400/10 text-alert-300',
+  'Adventure':                    'border-pulse-400/40 bg-pulse-400/10 text-pulse-300',
+  'RPG':                          'border-fuchsia-400/40 bg-fuchsia-500/10 text-fuchsia-300',
+  'Role-playing (RPG)':           'border-fuchsia-400/40 bg-fuchsia-500/10 text-fuchsia-300',
+  'Strategy':                     'border-signal-400/40 bg-signal-400/10 text-signal-300',
+  'Shooter':                      'border-power-400/40 bg-power-400/10 text-power-300',
+  'Music':                        'border-pink-400/40 bg-pink-500/10 text-pink-300',
+  'Platform':                     'border-sky-400/40 bg-sky-500/10 text-sky-300',
+  'Sports':                       'border-lime-400/40 bg-lime-500/10 text-lime-300',
+  'Sport':                        'border-lime-400/40 bg-lime-500/10 text-lime-300',
+  'Horror':                       'border-rose-500/40 bg-rose-500/10 text-rose-300',
+  'Simulation':                   'border-cyan-400/40 bg-cyan-500/10 text-cyan-300',
+  'Simulator':                    'border-cyan-400/40 bg-cyan-500/10 text-cyan-300',
+  'Fighting':                     'border-orange-500/40 bg-orange-500/10 text-orange-300',
+  'Racing':                       'border-power-400/40 bg-power-400/10 text-power-300',
+  'Puzzle':                       'border-violet-400/40 bg-violet-500/10 text-violet-300',
+  'Indie':                        'border-power-300/40 bg-power-300/10 text-power-200',
+  'Arcade':                       'border-signal-400/40 bg-signal-400/10 text-signal-200',
+  'Visual Novel':                 'border-fuchsia-400/40 bg-fuchsia-500/10 text-fuchsia-300',
+  'Card & Board Game':            'border-emerald-400/40 bg-emerald-500/10 text-emerald-300',
+  'Tactical':                     'border-indigo-400/40 bg-indigo-500/10 text-indigo-300',
+  'MOBA':                         'border-violet-500/40 bg-violet-500/10 text-violet-300',
+  'Point-and-click':              'border-cyan-400/40 bg-cyan-500/10 text-cyan-300',
+  'Hack and slash/Beat \'em up':  'border-rose-500/40 bg-rose-500/10 text-rose-300',
+  'Real Time Strategy (RTS)':     'border-blue-400/40 bg-blue-500/10 text-blue-300',
+  'Turn-based strategy (TBS)':    'border-indigo-400/40 bg-indigo-500/10 text-indigo-300',
 };
 
 const PLATFORM_COLORS: Record<string, string> = {
-  PC: 'text-sky-400 bg-sky-500/10 border-sky-500/20',
-  PS5: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
-  Switch: 'text-red-400 bg-red-500/10 border-red-500/20',
-  Xbox: 'text-green-400 bg-green-500/10 border-green-500/20',
+  PC:     'text-sky-300 border-sky-400/40 bg-sky-500/10',
+  PS5:    'text-blue-300 border-blue-400/40 bg-blue-500/10',
+  Switch: 'text-alert-300 border-alert-400/40 bg-alert-400/10',
+  Xbox:   'text-pulse-300 border-pulse-400/40 bg-pulse-400/10',
 };
 
-const STATUS_STYLES: Record<GameStatus, { label: string; emoji: string; cls: string }> = {
-  Backlog: { label: 'Pendiente', emoji: '📋', cls: 'text-slate-300 bg-slate-500/10 border-slate-500/20' },
-  Playing: { label: 'Jugando', emoji: '🎮', cls: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20' },
-  Completed: { label: 'Completado', emoji: '✅', cls: 'text-sky-300 bg-sky-500/10 border-sky-500/20' },
-  Platinumed: { label: 'Platinado', emoji: '🏆', cls: 'text-amber-300 bg-amber-500/10 border-amber-500/25' },
-  Dropped: { label: 'Abandonado', emoji: '❌', cls: 'text-red-300 bg-red-500/10 border-red-500/20' },
+const STATUS_STYLES: Record<GameStatus, { label: string; tag: string; dot: string }> = {
+  Backlog:    { label: 'PENDING',    tag: 'border-slate-400/40 bg-slate-500/15 text-slate-200',         dot: 'bg-slate-400' },
+  Playing:    { label: 'ACTIVE',     tag: 'border-pulse-400/50 bg-pulse-400/15 text-pulse-300',         dot: 'bg-pulse-400 animate-pulse' },
+  Completed:  { label: 'CLEARED',    tag: 'border-signal-400/50 bg-signal-400/15 text-signal-300',      dot: 'bg-signal-400' },
+  Platinumed: { label: 'PLATINUM',   tag: 'border-power-300/60 bg-power-400/20 text-power-200',         dot: 'bg-power-400' },
+  Dropped:    { label: 'ABORTED',    tag: 'border-alert-400/50 bg-alert-500/15 text-alert-300',         dot: 'bg-alert-400' },
 };
 
-const DEFAULT_BADGE = 'from-slate-500/20 to-slate-600/20 text-slate-300 border-slate-500/20';
-const DEFAULT_PLATFORM = 'text-slate-400 bg-slate-500/10 border-slate-500/20';
+const DEFAULT_BADGE = 'border-slate-400/40 bg-slate-500/10 text-slate-300';
+const DEFAULT_PLATFORM = 'text-slate-300 border-slate-400/40 bg-slate-500/10';
 
 const PlatformIcon = ({ platform }: { platform: string }) => {
   switch (platform) {
-    case 'PC': return <FaWindows size={14} />;
-    case 'PS5': return <FaPlaystation size={14} />;
-    case 'Switch': return <BsNintendoSwitch size={14} />;
-    case 'Xbox': return <FaXbox size={14} />;
-    default: return <span className="text-[10px] font-bold uppercase px-0.5">{platform}</span>;
+    case 'PC': return <FaWindows size={12} />;
+    case 'PS5': return <FaPlaystation size={12} />;
+    case 'Switch': return <BsNintendoSwitch size={12} />;
+    case 'Xbox': return <FaXbox size={12} />;
+    default: return <span className="text-[10px] font-bold uppercase">{platform}</span>;
   }
 };
-
-
 
 export function GameCard({ game, onEdit, onDelete }: GameCardProps) {
   const navigate = useNavigate();
@@ -75,134 +73,174 @@ export function GameCard({ game, onEdit, onDelete }: GameCardProps) {
   const isPlat = game.status === 'Platinumed';
 
   return (
-    <article className={`glass group relative flex flex-col overflow-hidden rounded-2xl transition-all duration-500 hover:-translate-y-2 animate-fade-in ${
-      isPlat 
-        ? 'border-amber-400/60 bg-gradient-to-br from-amber-600/10 via-surface-950/80 to-amber-900/05 shadow-[0_0_30px_rgba(251,191,36,0.1)] ring-1 ring-amber-400/20 hover:border-amber-400 hover:shadow-[0_0_40px_rgba(251,191,36,0.2)]' 
-        : 'border-white/5 hover:border-amber-500/30 hover:shadow-amber-500/10'
-      }`}>
-      {/* Platinum premium shine effect */}
+    <article
+      className={`
+        hud-clip group relative flex flex-col overflow-hidden animate-fade-in
+        transition-all duration-300 hover:-translate-y-1
+        ${isPlat
+          ? 'hud-panel-bordered hud-panel-power legendary-border'
+          : 'hud-panel-bordered hover:[&::before]:opacity-100'
+        }
+      `}
+    >
+      {/* Animated platinum sheen */}
       {isPlat && (
         <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/10 via-transparent to-amber-400/5 opacity-40" />
-          <div className="absolute inset-y-0 w-48 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-[-20deg] animate-platinum-shine" />
+          <div className="absolute inset-y-0 w-48 bg-gradient-to-r from-transparent via-power-200/30 to-transparent skew-x-[-20deg] animate-platinum-shine" />
         </div>
       )}
-      {/* Top Section: Cover Image */}
+
+      {/* ── Cover ── */}
       <div className="relative aspect-[3/4] w-full overflow-hidden bg-surface-900">
         {game.coverUrl ? (
-          <img
-            src={game.coverUrl}
-            alt={game.name}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-          />
+          <>
+            <img
+              src={game.coverUrl}
+              alt={game.name}
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+            />
+            {/* Top-down vignette to ground the badges */}
+            <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-void/85 via-void/30 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-void via-void/70 to-transparent" />
+            {/* Subtle scan grid over cover */}
+            <div className="absolute inset-0 mix-blend-overlay opacity-30 pointer-events-none"
+              style={{
+                backgroundImage: 'repeating-linear-gradient(0deg, rgba(0,229,255,0.18) 0 1px, transparent 1px 4px)'
+              }}
+            />
+          </>
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-surface-800 text-surface-400">
-            <Monitor size={48} strokeWidth={1} />
+          <div className="flex h-full w-full items-center justify-center bg-surface-800 text-surface-500">
+            <Gamepad size={56} strokeWidth={1.2} />
           </div>
         )}
 
-        {/* Floating Status Badge */}
+        {/* Status tag — top-left, HUD-tagged */}
         <div className="absolute top-3 left-3 z-10">
-          <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-bold backdrop-blur-md ${statusStyle.cls.replace('bg-', 'bg-').replace('/10', '/40')}`}>
-            <span className="leading-none">{statusStyle.emoji}</span>
-            {statusStyle.label.toUpperCase()}
+          <span className={`hud-clip-tag inline-flex items-center gap-1.5 border px-2.5 py-1 text-[10px] font-bold tracking-hud font-display backdrop-blur-md ${statusStyle.tag}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${statusStyle.dot}`} />
+            {statusStyle.label}
           </span>
         </div>
 
-        {/* Genres Badge (Bottom Left) */}
-        <div className="absolute bottom-3 left-3 z-10 flex gap-1 flex-wrap w-full pr-4">
-          {game.genres && game.genres.slice(0, 3).map((g, idx) => (
-            <span key={idx} className={`inline-flex items-center gap-1.5 rounded-lg border bg-surface-950/40 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${GENRE_GRADIENTS[g] ?? DEFAULT_BADGE}`}>
-              {g}
+        {/* Platform — top-right */}
+        {game.platform && (
+          <div className="absolute top-3 right-3 z-10">
+            <span className={`flex h-7 w-7 items-center justify-center border backdrop-blur-md ${PLATFORM_COLORS[game.platform] ?? DEFAULT_PLATFORM}`}>
+              <PlatformIcon platform={game.platform} />
             </span>
-          ))}
-        </div>
+          </div>
+        )}
+
+        {/* Genres — bottom */}
+        {game.genres && game.genres.length > 0 && (
+          <div className="absolute bottom-3 left-3 right-3 z-10 flex flex-wrap gap-1">
+            {game.genres.slice(0, 3).map((g, idx) => (
+              <span key={idx} className={`inline-flex items-center border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.18em] font-display backdrop-blur-md ${GENRE_COLORS[g] ?? DEFAULT_BADGE}`}>
+                {g}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Bottom Section: Details */}
-      <div className="relative flex flex-col p-5 z-10">
-
-        {/* Name & Platform */}
-        <div className="mb-3">
-          <div className="flex items-start justify-between gap-2">
-            <h3 
-              onClick={() => navigate(`/game/${game.igdbId}/${encodeURIComponent(game.name)}`)}
-              className="font-display text-lg font-bold leading-tight text-white transition-colors group-hover:text-amber-300 cursor-pointer hover:underline"
-            >
-              {game.name}
-            </h3>
-            {game.platform && (
-              <span className={`shrink-0 rounded p-1.5 flex items-center justify-center ${PLATFORM_COLORS[game.platform] ?? DEFAULT_PLATFORM}`} title={game.platform}>
-                <PlatformIcon platform={game.platform} />
-              </span>
-            )}
-          </div>
+      {/* ── Body ── */}
+      <div className="relative flex flex-1 flex-col p-5 z-10">
+        {/* HUD ID line */}
+        <div className="mb-2 flex items-center justify-between font-mono text-[9px] uppercase tracking-hud">
+          <span className="text-signal-400/60">// VAULT_ID:{String(game.id).padStart(4, '0')}</span>
+          {isPlat && (
+            <span className="flex items-center gap-1 text-power-300 animate-data-blink">
+              <Trophy size={9} /> LGNDRY
+            </span>
+          )}
         </div>
 
-        {/* Rating & Stats Grid */}
-        <div className="mb-4 grid grid-cols-2 gap-4 border-y border-white/5 py-3">
-          {game.difficultyRating != null && (
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Dificultad</span>
-              <div className="flex items-center gap-1.5">
-                <Star size={12} className="text-amber-400" />
-                <span className="text-sm font-bold text-white">{game.difficultyRating}/10</span>
-              </div>
+        {/* Title */}
+        <h3
+          onClick={() => navigate(`/game/${game.igdbId}/${encodeURIComponent(game.name)}`)}
+          className="font-display text-lg font-bold leading-tight text-white mb-3 cursor-pointer transition-colors group-hover:text-signal-300 line-clamp-2"
+        >
+          {game.name}
+        </h3>
+
+        {/* Stats grid — terminal data readout */}
+        <div className="mb-4 grid grid-cols-2 gap-2 border-y border-signal-400/15 py-3">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[9px] font-bold tracking-hud text-signal-400/70 font-display">DIFFICULTY</span>
+            <div className="flex items-center gap-1.5">
+              <Star size={11} className="text-power-400" fill="currentColor" />
+              <span className="font-mono text-sm font-bold text-white">
+                {game.difficultyRating ?? '--'}
+                <span className="text-slate-500">/10</span>
+              </span>
             </div>
-          )}
-          {game.hoursPlayed != null && (
-            <div className="flex flex-col gap-1 text-right">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Tiempo</span>
-              <div className="flex items-center justify-end gap-1.5">
-                <Clock size={12} className="text-emerald-400" />
-                <span className="text-sm font-bold text-white">{game.hoursPlayed}h</span>
-              </div>
+          </div>
+          <div className="flex flex-col gap-0.5 items-end">
+            <span className="text-[9px] font-bold tracking-hud text-signal-400/70 font-display">PLAYTIME</span>
+            <div className="flex items-center gap-1.5">
+              <Clock size={11} className="text-pulse-400" />
+              <span className="font-mono text-sm font-bold text-white">
+                {game.hoursPlayed != null ? `${game.hoursPlayed}h` : '--'}
+              </span>
             </div>
-          )}
+          </div>
         </div>
 
         {/* Review */}
         {game.review && (
           <div className="mb-4">
-            <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Valoración</span>
-            <p className="text-sm italic text-slate-400 line-clamp-2 border-l-2 border-amber-500/30 pl-3">
-              "{game.review}"
+            <span className="mb-1 block text-[9px] font-bold tracking-hud text-signal-400/70 font-display">// LOG_ENTRY</span>
+            <p className="text-xs italic text-slate-300/90 line-clamp-2 border-l-2 border-signal-400/40 pl-3">
+              {game.review}
             </p>
           </div>
         )}
 
-        {/* Trophy Progress */}
+        {/* Trophy progress */}
         {game.trophyPercentage != null && (
           <div className="mb-5">
-            <div className="mb-2 flex justify-between text-[10px] font-bold uppercase tracking-wider">
-              <span className="text-slate-500">Trofeos</span>
-              <span className="text-amber-400">{game.trophyPercentage}%</span>
+            <div className="mb-1.5 flex items-baseline justify-between font-mono text-[10px] tracking-hud">
+              <span className="text-signal-400/70 font-display">TROPHY_DATA</span>
+              <span className={`font-bold ${isPlat ? 'text-power-300 text-glow-power' : 'text-signal-300'}`}>
+                {game.trophyPercentage}%
+              </span>
             </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-white/5 shadow-inner">
+            <div className="relative h-1.5 w-full overflow-hidden bg-surface-800 border border-signal-400/15">
               <div
-                className={`h-full rounded-full transition-all duration-700 shadow-[0_0_8px_rgba(251,191,36,0.3)] ${isPlat ? 'bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 animate-shimmer' : 'bg-gradient-to-r from-amber-500 to-yellow-400'
-                  }`}
+                className={`h-full transition-all duration-700 ${
+                  isPlat
+                    ? 'bg-gradient-to-r from-power-400 via-power-200 to-power-400 animate-shimmer'
+                    : 'bg-gradient-to-r from-signal-500 to-signal-300'
+                }`}
                 style={{ width: `${game.trophyPercentage}%` }}
+              />
+              {/* tick marks */}
+              <div className="absolute inset-0 pointer-events-none"
+                style={{
+                  backgroundImage: 'repeating-linear-gradient(90deg, transparent 0 calc(10% - 1px), rgba(0,0,0,0.6) calc(10% - 1px) 10%)'
+                }}
               />
             </div>
           </div>
         )}
 
         {/* Actions */}
-        <div className="flex gap-2">
+        <div className="mt-auto flex gap-2">
           <button
             onClick={() => onEdit(game)}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-white/5 px-3 py-2.5 text-xs font-bold text-slate-300 transition-all duration-200 hover:bg-amber-500/20 hover:text-amber-300 hover:scale-[1.02] active:scale-[0.98]"
+            className="hud-clip-sm hud-btn-ghost group/btn flex flex-1 items-center justify-center gap-2 px-3 py-2 text-[11px]"
           >
-            <Edit2 size={14} />
-            EDITAR
+            <Pencil size={12} className="transition-transform group-hover/btn:rotate-[-8deg]" />
+            EDIT
           </button>
           <button
             onClick={() => onDelete(game)}
-            className="flex aspect-square items-center justify-center rounded-xl bg-white/5 px-3 py-2.5 text-slate-300 transition-all duration-200 hover:bg-red-500/20 hover:text-red-400 hover:scale-[1.02] active:scale-[0.98]"
+            className="hud-clip-sm flex aspect-square items-center justify-center px-3 py-2 text-slate-400 border border-alert-400/20 bg-alert-500/5 transition-all hover:border-alert-400/60 hover:text-alert-300 hover:bg-alert-500/15 hover:glow-alert"
             title="Eliminar"
+            aria-label="Eliminar"
           >
-            <Trash2 size={16} />
+            <Trash2 size={14} />
           </button>
         </div>
       </div>
