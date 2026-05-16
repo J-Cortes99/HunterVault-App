@@ -1,0 +1,112 @@
+name: Build & Deploy backend
+
+# ───────────────────────────────────────────────────────────────
+# Pipeline CI/CD:
+#  1. Construye la imagen Docker (ARM64) con buildx
+#  2. La sube a GitHub Container Registry (ghcr.io)
+#  3. Conecta por SSH a la VM Oracle y la actualiza con `docker compose pull && up -d`
+#
+# Se dispara en cada push a main que toque código del backend, o manualmente
+# desde la pestaña Actions de GitHub.
+# ───────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'HunterVault.Api/**'
+      - 'HunterVault.Application/**'
+      - 'HunterVault.Domain/**'
+      - 'HunterVault.Infrastructure/**'
+      - 'HunterVault.slnx'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - 'Caddyfile'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/huntervault-api
+
+jobs:
+  build-and-push:
+    name: Build & Push (ARM64)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU (ARM64 emulation)
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,format=short
+            type=ref,event=branch
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to Oracle VM
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: SSH deploy
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          port: 22
+          script: |
+            set -e
+            cd ~/huntervault
+            echo "──── Pulling latest code (compose/Caddyfile) ────"
+            git pull --ff-only
+            echo "──── Logging into GHCR ────"
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            echo "──── Pulling new API image ────"
+            docker compose pull api
+            echo "──── Recreating API container ────"
+            docker compose up -d --no-deps api
+            echo "──── Cleaning up old images ────"
+            docker image prune -f
+            echo "──── Health check ────"
+            sleep 5
+            docker compose ps api
+            curl -sf http://localhost:8080/health || curl -sf http://localhost:8080/ -o /dev/null -w "HTTP %{http_code}\n" || true

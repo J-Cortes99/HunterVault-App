@@ -23,10 +23,12 @@ services:
       - huntervault-net
 
   api:
+    # En producción la imagen se descarga pre-construida desde GHCR (CI/CD la sube).
+    # Para desarrollo local, se puede forzar build con: docker compose build api
+    image: ghcr.io/j-cortes99/huntervault-api:latest
     build:
       context: .
       dockerfile: Dockerfile
-    image: huntervault-api:latest
     container_name: huntervault-api
     restart: unless-stopped
     depends_on:
