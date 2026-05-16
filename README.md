@@ -3,7 +3,9 @@
 <p align="center">
   <a href="#tecnologias">Tecnologías</a> •
   <a href="#arquitectura">Arquitectura</a> •
-  <a href="#instalacion">Instalación</a> •
+  <a href="#instalacion">Instalación local</a> •
+  <a href="#despliegue">Despliegue en producción</a> •
+  <a href="#cicd">CI/CD</a> •
   <a href="#endpoints">API Endpoints</a> •
   <a href="#contribuir">Contribuir</a>
 </p>
@@ -16,7 +18,7 @@
 
 <h2 id="tecnologias">💻 Tecnologías</h2>
 
-El proyecto utiliza una arquitectura desacoplada moderna, con el backend robusto en Azure y un frontend ágil en Vercel.
+El proyecto utiliza una arquitectura desacoplada moderna: backend en contenedores Docker sobre una VM ARM gratuita de Oracle Cloud, frontend en Vercel.
 
 **Frontend:**
 - [React 19](https://react.dev/)
@@ -25,20 +27,25 @@ El proyecto utiliza una arquitectura desacoplada moderna, con el backend robusto
 - [Tailwind CSS v4](https://tailwindcss.com/) (Estilos)
 - [TanStack Query](https://tanstack.com/query) (Cache de servidor)
 - [Axios](https://axios-http.com/) (Cliente HTTP)
+- HUD futurista: tipografías Chakra Petch + Rajdhani + JetBrains Mono, paleta cyan/ámbar, paneles biselados con clip-path y scanlines.
 
 **Backend:**
 - [ASP.NET Core 10](https://dotnet.microsoft.com/) (Web API, Minimal APIs)
 - [Entity Framework Core](https://learn.microsoft.com/en-us/ef/core/) (ORM Code-first)
-- [SignalR](https://dotnet.microsoft.com/apps/aspnet/signalr) (Funciones sociales en tiempo real)
+- [Npgsql](https://www.npgsql.org/) (PostgreSQL provider para EF Core)
+- [SignalR](https://dotnet.microsoft.com/apps/aspnet/signalr) (Funciones sociales en tiempo real, vía WebSockets)
 - [IGDB API](https://api-docs.igdb.com/) (Proveedor de datos de videojuegos)
 - JWT Bearer + ASP.NET Identity password hashing
 - Gmail SMTP para verificación de email y reset de contraseña
 
-**Infraestructura:**
-- **Azure App Service:** Hosting del Backend.
-- **Azure SQL Database:** Base de datos relacional.
-- **Vercel:** Hosting del Frontend.
-- **GitHub Actions:** Pipelines de CI/CD automáticos.
+**Infraestructura (producción):**
+- **Oracle Cloud Always Free:** VM ARM Ampere A1 (1 OCPU / 6 GB RAM) en `eu-madrid-1`. Hospeda toda la pila backend sin coste.
+- **Docker + Docker Compose:** orquesta tres contenedores (`api`, `postgres`, `caddy`).
+- **PostgreSQL 17:** base de datos relacional (contenedor con volumen persistente).
+- **Caddy 2:** reverse-proxy con HTTPS automático vía Let's Encrypt + soporte WebSocket para SignalR.
+- **DuckDNS:** dominio dinámico gratuito apuntando a la IP pública de la VM.
+- **GitHub Actions + GHCR:** CI/CD que en cada push a `main` con cambios en el backend construye una imagen ARM64 con `buildx`, la publica en GitHub Container Registry y la despliega por SSH en la VM.
+- **Vercel:** hosting del Frontend (deploy automático en cada push que toque `HunterVault.Frontend/**`).
 
 <h2 id="arquitectura">🏛 Arquitectura</h2>
 
@@ -60,7 +67,7 @@ HunterVault.Application/    Casos de uso y contratos.
   └── Configuration/        JwtOptions, IgdbOptions, SmtpOptions.
 
 HunterVault.Infrastructure/ Implementaciones de los puertos.
-  ├── Persistence/          HunterVaultContext + migraciones EF Core.
+  ├── Persistence/          HunterVaultContext + migraciones EF Core (Npgsql).
   ├── Identity/             AspNetIdentityPasswordHasher, JwtTokenGenerator.
   ├── External/             IgdbService (HttpClient + cache + Twitch OAuth).
   ├── Messaging/            SmtpEmailSender, SocialHub, SignalRActivityNotifier.
@@ -76,66 +83,49 @@ HunterVault.Api/            Composition root.
 
 Los endpoints son adaptadores HTTP delgados: validan, extraen el `userId` del contexto y delegan en los servicios de Application. Toda la lógica de dominio (reglas de XP, normalización de trofeos) vive en `Domain` y se reutiliza en cualquier capa.
 
-<h2 id="instalacion">🚀 Instalación</h2>
-
-Sigue estos pasos para ejecutar el proyecto en tu entorno local de desarrollo.
+<h2 id="instalacion">🚀 Instalación local</h2>
 
 <h3>Prerrequisitos</h3>
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - [Node.js (v18 o superior)](https://nodejs.org/)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (para levantar PostgreSQL fácil) o un PostgreSQL local nativo
 - [Git](https://git-scm.com/)
-- Una cuenta de [Twitch Developer](https://dev.twitch.tv/) para obtener las llaves de la API de IGDB.
+- Una cuenta de [Twitch Developer](https://dev.twitch.tv/) para las llaves de la API de IGDB.
 
 <h3>Clonación</h3>
 
 ```bash
 git clone https://github.com/j-cortes99/huntervault-app.git
+cd huntervault-app
 ```
 
-<h3>Configuración del Backend (ASP.NET Core)</h3>
-
-1. Navega a la carpeta de la API (proyecto de arranque, composition root):
+<h3>1. Levantar PostgreSQL local (rápido con Docker)</h3>
 
 ```bash
-cd huntervault-app/HunterVault.Api
+docker run --name huntervault-db \
+  -e POSTGRES_DB=huntervault \
+  -e POSTGRES_USER=huntervault \
+  -e POSTGRES_PASSWORD=devpassword \
+  -p 5432:5432 \
+  -d postgres:17-alpine
 ```
 
-2. Configura los secretos vía `dotnet user-secrets` (recomendado) o editando `appsettings.Development.json`. Las claves esperadas son:
+<h3>2. Configuración del Backend (ASP.NET Core)</h3>
 
-```jsonc
-{
-  "ConnectionStrings": {
-    "HunterVault": "Server=localhost;Database=HunterVault;Trusted_Connection=True;TrustServerCertificate=True;"
-  },
-  "AppSettings": {
-    "Token": "UNA_CLAVE_HMAC_SHA512_LARGA_AL_MENOS_64_BYTES",
-    "Issuer": "HunterVaultApi",
-    "Audience": "HunterVaultFrontend"
-  },
-  "IgdbApi": {
-    "ClientId": "TU_CLIENT_ID_DE_TWITCH",
-    "ClientSecret": "TU_CLIENT_SECRET_DE_TWITCH"
-  },
-  "Smtp": {
-    "Email": "tu-cuenta@gmail.com",
-    "Password": "TU_APP_PASSWORD_DE_GMAIL"
-  }
-}
-```
-
-Equivalente con `user-secrets` (más seguro, no se sube al repo):
+Configura los secretos vía `dotnet user-secrets` (recomendado) desde la carpeta de la API:
 
 ```bash
-dotnet user-secrets set "ConnectionStrings:HunterVault" "Server=localhost;Database=HunterVault;Trusted_Connection=True;TrustServerCertificate=True;"
-dotnet user-secrets set "AppSettings:Token" "UNA_CLAVE_HMAC_SHA512_LARGA"
+cd HunterVault.Api
+dotnet user-secrets set "ConnectionStrings:HunterVault" "Host=localhost;Port=5432;Database=huntervault;Username=huntervault;Password=devpassword"
+dotnet user-secrets set "AppSettings:Token" "UNA_CLAVE_HMAC_SHA512_LARGA_AL_MENOS_64_BYTES"
 dotnet user-secrets set "IgdbApi:ClientId" "..."
 dotnet user-secrets set "IgdbApi:ClientSecret" "..."
 dotnet user-secrets set "Smtp:Email" "..."
 dotnet user-secrets set "Smtp:Password" "..."
 ```
 
-3. Ejecuta la API. Las migraciones se aplican automáticamente al arranque vía `app.Services.MigrateDb()`:
+Ejecuta la API. Las migraciones se aplican automáticamente al arranque vía `app.Services.MigrateDb()`:
 
 ```bash
 dotnet run
@@ -148,24 +138,23 @@ La API escucha en `http://localhost:5147` (HTTP) y `https://localhost:7004` (HTT
 > ```bash
 > dotnet ef migrations add NombreMigracion \
 >   --project HunterVault.Infrastructure \
->   --startup-project HunterVault.Api
+>   --startup-project HunterVault.Api \
+>   --output-dir Persistence/Migrations
 > ```
 
-<h3>Configuración del Frontend (React + Vite)</h3>
-
-1. Navega a la carpeta del Frontend:
+<h3>3. Configuración del Frontend (React + Vite)</h3>
 
 ```bash
-cd huntervault-app/HunterVault.Frontend
+cd HunterVault.Frontend
 ```
 
-2. Crea un archivo `.env.development` en la raíz de la carpeta del frontend:
+Crea un archivo `.env.development` en la raíz de la carpeta del frontend:
 
 ```env
 VITE_API_URL=http://localhost:5147/api
 ```
 
-3. Instala las dependencias e inicia el servidor de desarrollo:
+Instala las dependencias e inicia el servidor de desarrollo:
 
 ```bash
 npm install
@@ -173,6 +162,185 @@ npm run dev
 ```
 
 El frontend levanta en `http://localhost:5173` y proxy-ea `/api` al backend. La conexión SignalR se deriva de `VITE_API_URL` quitando el sufijo `/api`.
+
+<h2 id="despliegue">🐳 Despliegue en producción (Docker en Oracle Cloud)</h2>
+
+El backend se despliega como tres contenedores orquestados con `docker-compose.yml` sobre una VM ARM gratuita de Oracle Cloud.
+
+<h3>Arquitectura de contenedores</h3>
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  VM Oracle Cloud (Ubuntu 22.04 ARM64, Madrid AD-1)       │
+│                                                          │
+│  ┌──────────┐    ┌─────────────┐    ┌──────────────┐   │
+│  │ caddy:2  │───▶│ huntervault │───▶│ postgres:17  │   │
+│  │ :80 :443 │    │  -api :8080 │    │     :5432    │   │
+│  └──────────┘    └─────────────┘    └──────────────┘   │
+│   Let's Encrypt   .NET 10 ARM       Volumen persistente │
+│   + WebSocket     ASP.NET Core      (postgres_data)     │
+└─────────────────────────────────────────────────────────┘
+            ▲
+            │ HTTPS
+            │
+   hunter-vault.duckdns.org
+            ▲
+            │ peticiones API + WS
+            │
+     ┌──────┴──────┐
+     │   Vercel    │
+     │  (Frontend) │
+     └─────────────┘
+```
+
+<h3>Despliegue inicial</h3>
+
+1. **Crear VM ARM en Oracle Cloud** (Ubuntu 22.04 aarch64, shape `VM.Standard.A1.Flex`, Always Free-eligible). Abrir puertos 22, 80 y 443 en la Security List **y** en `iptables` del sistema (Oracle preconfigura iptables muy restrictivo).
+
+2. **Instalar Docker** en la VM:
+   ```bash
+   curl -fsSL https://get.docker.com | sudo sh
+   sudo usermod -aG docker ubuntu
+   ```
+
+3. **Clonar el repo y configurar `.env`** (basado en `.env.example`):
+   ```bash
+   git clone https://github.com/j-cortes99/huntervault-app.git ~/huntervault
+   cd ~/huntervault
+   cp .env.example .env
+   nano .env   # rellenar todos los valores
+   ```
+
+4. **Crear subdominio en [DuckDNS](https://www.duckdns.org)** apuntando a la IP pública de la VM. Poner ese mismo dominio en `.env` como `DOMAIN`.
+
+5. **Levantar el stack**:
+   ```bash
+   docker compose up -d --build
+   ```
+   La primera vez tarda 5-10 min (compila la imagen .NET, descarga Postgres y Caddy). Caddy obtiene automáticamente el certificado SSL de Let's Encrypt.
+
+<h3>Actualizar el backend tras cambios en el código</h3>
+
+**Lo normal es no hacer nada**: el [pipeline de CI/CD](#cicd) se encarga automáticamente en cada push a `main`. EF Core aplica las nuevas migraciones al reiniciar la API.
+
+Si por algún motivo necesitas hacerlo a mano desde la VM (ej. emergencia, GitHub caído):
+
+```bash
+cd ~/huntervault
+git pull
+docker compose pull api          # descarga la última imagen de GHCR
+docker compose up -d --no-deps api
+```
+
+Y si quieres reconstruir la imagen en la propia VM en lugar de bajarla de GHCR:
+
+```bash
+docker compose up -d --build api
+```
+
+<h3>Variables de entorno (`.env`)</h3>
+
+Plantilla completa en `.env.example`. Las claves obligatorias son:
+
+| Variable | Descripción |
+|---|---|
+| `POSTGRES_PASSWORD` | Password de la BD (generada aleatoria, p.ej. `openssl rand -base64 32`). |
+| `JWT_TOKEN` | Clave HMAC-SHA512 para firmar JWTs (>=64 bytes aleatorios). |
+| `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET` | Credenciales OAuth de Twitch para acceder a IGDB. |
+| `SMTP_EMAIL` / `SMTP_PASSWORD` | Cuenta de Gmail + app password para verificación de email. |
+| `DOMAIN` | Subdominio DuckDNS (o propio) para HTTPS — ej. `hunter-vault.duckdns.org`. |
+
+> ⚠️ El archivo `.env` está en `.gitignore` y nunca debe commitearse. Mantén una copia segura aparte (gestor de contraseñas).
+
+<h3>Comandos útiles</h3>
+
+```bash
+docker compose ps                  # estado de los contenedores
+docker compose logs api --tail 50  # logs de la API
+docker compose logs caddy          # logs del reverse proxy (útil para SSL)
+docker compose restart api         # reiniciar solo la API (resetea rate limiter en memoria)
+docker compose down                # parar todo (mantiene volúmenes)
+docker compose down -v             # parar y BORRAR la BD (cuidado)
+```
+
+<h3>Backup de PostgreSQL</h3>
+
+Para hacer un backup manual del volumen de la BD:
+
+```bash
+docker exec huntervault-db pg_dump -U huntervault huntervault > backup-$(date +%F).sql
+```
+
+<h2 id="cicd">⚙️ CI/CD</h2>
+
+El backend tiene un pipeline automático en GitHub Actions (`.github/workflows/deploy.yml`) que se dispara en cada push a `main` que toque código backend (`HunterVault.*/`, `Dockerfile`, `docker-compose.yml`, `Caddyfile`) o manualmente desde la pestaña Actions del repo.
+
+<h3>Pipeline</h3>
+
+```
+push a main (paths backend)
+        │
+        ▼
+┌──────────────────────────┐
+│ Job 1 · build-and-push   │   Runner x86 de GitHub (~2 min)
+│ ┌──────────────────────┐ │
+│ │ Setup QEMU + Buildx  │ │   Emulación ARM64
+│ │ Login GHCR           │ │   con GITHUB_TOKEN
+│ │ Build imagen ARM64   │ │   cross-compile vía Dockerfile
+│ │ Push a ghcr.io       │ │   tags: latest + sha-XXXXXXX
+│ └──────────────────────┘ │
+└──────────┬───────────────┘
+           ▼
+┌──────────────────────────┐
+│ Job 2 · deploy           │   Otro runner (~30 s)
+│ ┌──────────────────────┐ │
+│ │ SSH a la VM Oracle   │ │   appleboy/ssh-action
+│ │   git pull           │ │   actualiza compose/Caddyfile
+│ │   docker compose     │ │   pull api → up -d --no-deps api
+│ │   docker image prune │ │   limpia capas viejas
+│ └──────────────────────┘ │
+└──────────────────────────┘
+
+Total: ~2-3 min · downtime efectivo ~5 s
+```
+
+El frontend NO se redespliega por este pipeline — Vercel lo hace solo cuando cambia algo en `HunterVault.Frontend/**`.
+
+<h3>Secrets de GitHub necesarios</h3>
+
+Configurados en **Settings → Secrets and variables → Actions** del repo:
+
+| Secret | Contenido |
+|---|---|
+| `VM_HOST` | IP pública de la VM Oracle. |
+| `VM_USER` | `ubuntu`. |
+| `VM_SSH_KEY` | Clave privada SSH completa (la pareja de la que añadiste a `~/.ssh/authorized_keys` en la VM). |
+
+`GITHUB_TOKEN` lo provee GitHub automáticamente para autenticarse contra GHCR.
+
+<h3>GitHub Container Registry (GHCR)</h3>
+
+Las imágenes se publican en `ghcr.io/j-cortes99/huntervault-api`. El package está marcado como **público** para que:
+
+- La VM pueda hacer `docker compose pull api` manualmente sin tener que gestionar tokens.
+- El storage no cuente contra la cuota de packages privados (500 MB gratis), ya que los packages públicos son ilimitados.
+- Cualquiera pueda inspeccionar/auditar la imagen (no contiene secretos: `.env` queda fuera por `.dockerignore`).
+
+Los tags activos son `latest` (siempre apunta al último commit de `main`) y `sha-XXXXXXX` (hash corto del commit, útil para rollback).
+
+<h3>Rollback a una versión anterior</h3>
+
+Si un deploy rompe algo, vuelve a una imagen anterior identificándola por su tag de commit:
+
+```bash
+# En la VM
+cd ~/huntervault
+docker pull ghcr.io/j-cortes99/huntervault-api:sha-XXXXXXX
+docker tag ghcr.io/j-cortes99/huntervault-api:sha-XXXXXXX ghcr.io/j-cortes99/huntervault-api:latest
+docker compose up -d --no-deps api
+```
+
+O simplemente revierte el commit problemático en GitHub y deja que el pipeline reconstruya.
 
 <h2 id="endpoints">📍 Endpoints Principales</h2>
 
@@ -222,7 +390,7 @@ Todos los endpoints están bajo `/api`. Las rutas autenticadas requieren `Author
 
 | Ruta | Protocolo | Descripción |
 |---|---|---|
-| `/hubs/social` | SignalR | Hub que emite `ReceiveActivityUpdate(username, gameName, status, trophyPct?)` a los seguidores cuando un usuario crea o actualiza un juego. |
+| `/hubs/social` | SignalR (WebSocket) | Hub que emite `ReceiveActivityUpdate(username, gameName, status, trophyPct?)` a los seguidores cuando un usuario crea o actualiza un juego. |
 
 
 <h2 id="contribuir">📫 Contribuir</h2>
