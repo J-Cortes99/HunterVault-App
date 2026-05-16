@@ -10,7 +10,7 @@ public static class PersistenceExtensions
     public static IServiceCollection AddHunterVaultPersistence(this IServiceCollection services, IConfiguration configuration)
     {
         var connString = configuration.GetConnectionString("HunterVault");
-        services.AddDbContext<HunterVaultContext>(options => options.UseSqlServer(connString));
+        services.AddDbContext<HunterVaultContext>(options => options.UseNpgsql(connString));
         services.AddScoped<IHunterVaultDbContext>(sp => sp.GetRequiredService<HunterVaultContext>());
         return services;
     }

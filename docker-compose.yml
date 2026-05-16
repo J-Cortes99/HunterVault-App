@@ -1,0 +1,73 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: huntervault-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-huntervault}
+      POSTGRES_USER: ${POSTGRES_USER:-huntervault}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-huntervault} -d ${POSTGRES_DB:-huntervault}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - huntervault-net
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: huntervault-api:latest
+    container_name: huntervault-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__HunterVault: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-huntervault};Username=${POSTGRES_USER:-huntervault};Password=${POSTGRES_PASSWORD}"
+      AppSettings__Token: ${JWT_TOKEN}
+      AppSettings__Issuer: ${JWT_ISSUER:-HunterVaultApi}
+      AppSettings__Audience: ${JWT_AUDIENCE:-HunterVaultFrontend}
+      IgdbApi__ClientId: ${IGDB_CLIENT_ID}
+      IgdbApi__ClientSecret: ${IGDB_CLIENT_SECRET}
+      Smtp__Email: ${SMTP_EMAIL}
+      Smtp__Password: ${SMTP_PASSWORD}
+      Smtp__Host: ${SMTP_HOST:-smtp.gmail.com}
+      Smtp__Port: ${SMTP_PORT:-587}
+      Smtp__FromName: ${SMTP_FROM_NAME:-HunterVault}
+    ports:
+      - "8080:8080"
+    networks:
+      - huntervault-net
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: huntervault-caddy
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - huntervault-net
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  huntervault-net:
+    driver: bridge
