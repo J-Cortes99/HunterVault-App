@@ -7,6 +7,11 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-huntervault}
       POSTGRES_USER: ${POSTGRES_USER:-huntervault}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    # Bind solo a loopback (127.0.0.1) — accesible vía túnel SSH desde herramientas
+    # tipo DBeaver, pero NUNCA desde internet (firewall Oracle + iptables lo bloquean
+    # de todas formas, pero esto añade defensa en profundidad).
+    ports:
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
