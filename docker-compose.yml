@@ -63,6 +63,8 @@ services:
       - "443:443"
     environment:
       DOMAIN: ${DOMAIN}
+      # Dominio de AniMatch (la app vecina en ~/animatch, misma red docker)
+      ANIMATCH_DOMAIN: ${ANIMATCH_DOMAIN:-}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

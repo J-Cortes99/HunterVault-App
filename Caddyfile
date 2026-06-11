@@ -15,3 +15,17 @@
         header_up X-Forwarded-Proto {scheme}
     }
 }
+
+# AniMatch (contenedor "animatch" de ~/animatch, misma red docker).
+# El default *.localhost evita que Caddy intente certificados si la
+# variable no está definida en .env.
+{$ANIMATCH_DOMAIN:animatch.localhost} {
+    encode zstd gzip
+
+    reverse_proxy animatch:8080 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
